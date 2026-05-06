@@ -67,9 +67,6 @@ TESTS AND EVALUATIONS
 - Existing tests that cover this piece, how they verify behavior.
 - Any evaluation harnesses or runtime checks used.
 
-OPEN QUESTIONS
-- TODOs, deferred decisions, design smells. Flag; do not fix.
-
 ## Code Examples
 
 - Include short, focused code excerpts from the repo when they clarify mechanics.
