@@ -137,6 +137,7 @@ Do NOT continue questioning unnecessarily.
 - Do NOT generate code
 - Do NOT summarize prematurely
 - Do NOT switch into solution mode
+- If a question tool is available use that for better UX.
 
 Only:
 → ask
