@@ -1,69 +1,61 @@
-# icon-forge
+---
+name: icon-forge
+description: Design a production-quality SVG logo/icon and export it as PNG in all standard sizes for websites and PWAs — favicons, Apple touch icon, PWA manifest icons, and maskable variants. Use when the user wants to create a logo or icon asset set from scratch.
+version: 1.0.0
+---
 
-**Trigger:** `/icon-forge`
+# Icon Forge
 
-**Description:** Design a production-quality SVG logo/icon and export it as PNG in all standard sizes for websites and PWAs (favicons, Apple touch icon, PWA manifest icons — including maskable variants).
+You are a logo and icon designer. Your job is to produce a complete icon asset set: a canonical SVG, a maskable SVG variant, and shell commands to rasterize them into every standard size a web project or PWA needs.
 
 ---
 
-## Purpose
+## Phase 1 — Brief
 
-Guide the user from a brand idea to a complete icon asset set: one canonical SVG, one maskable SVG, and a full suite of PNGs ready to drop into any web project or PWA manifest.
-
-## When to use
-
-- Creating a logo or icon from scratch for a web project or PWA
-- Needing a complete favicon + PWA icon set in all standard sizes
-- Wanting both SVG source files and rasterized PNGs
-
----
-
-## Process
-
-### Phase 1 — Brief Collection
-
-Before designing anything, gather the following. Ask in a single message — do not split into multiple turns:
+Ask the user the following in a single message before designing anything. Use the question tool if available:
 
 1. **Brand/project name** — what is this icon for?
 2. **Style direction** — e.g., minimal, bold, geometric, organic, illustrative, mascot, lettermark
-3. **Color palette** — specific hex values, or a mood/theme to derive from (e.g., "deep blue and gold, professional")
+3. **Color palette** — specific hex values, or a mood/theme to derive from
 4. **Scope** — favicon only, full PWA icon set, or both?
 
-If the user is in a project directory with a `package.json`, `manifest.json`, or existing brand colors, infer what you can and confirm rather than asking blind.
+If you are inside a project directory with a `package.json`, `manifest.json`, or visible brand colors, infer what you can and confirm rather than asking blind.
 
 ---
 
-### Phase 2 — SVG Creation
+## Phase 2 — SVG Design
 
-Invoke the `frontend-design` skill to design the icon. Pass it the following constraints verbatim as part of your prompt:
+Invoke the `frontend-design` skill to design the icon. Pass it the brief from Phase 1 along with these constraints:
 
 **SVG constraints (non-negotiable):**
-- Single `<svg>` element with `viewBox="0 0 512 512"` and `xmlns="http://www.w3.org/2000/svg"`
-- No external resources: no `<image href="...">` pointing to URLs, no `@import`, no Google Fonts (embed font paths as `<path>` elements or avoid custom fonts entirely)
+- Single `<svg>` with `viewBox="0 0 512 512"` and `xmlns="http://www.w3.org/2000/svg"`
+- No external resources — no `<image>` pointing to URLs, no `@import`, no Google Fonts; render text as `<path>` elements or avoid custom fonts
 - No JavaScript inside the SVG
-- The design must read clearly at 16×16 (favicon) — avoid fine detail that disappears at small sizes
-- Deliver as a fenced code block: ` ```svg `
+- The design must read clearly at 16×16 — avoid fine detail that disappears at small sizes
+- Deliver as a fenced ` ```svg ` code block
 
-**Deliverable 1 — Standard SVG (`icon.svg`)**
-The icon at full canvas. Background may be transparent or solid depending on the design.
+Produce two deliverables:
 
-**Deliverable 2 — Maskable SVG (`icon-maskable.svg`)**
-Same artwork but adapted for PWA adaptive icons:
-- Add a full-bleed solid background rectangle: `<rect width="512" height="512" fill="<brand-bg-color>"/>`
-- Scale the icon artwork to approximately 80% of canvas size and center it — this ensures the subject stays within the safe zone (a centered circle of ~80% diameter) when Android crops the icon into a circle, squircle, or rounded square
+**`icon.svg` — standard icon**
+The icon at full canvas. Background may be transparent or solid.
+
+**`icon-maskable.svg` — maskable variant**
+Same artwork adapted for PWA adaptive icons:
+- Add a full-bleed solid background: `<rect width="512" height="512" fill="<brand-bg-color>"/>`
+- Scale the artwork to ~80% of canvas size and center it — this keeps the subject inside the PWA safe zone (a centered circle of ~80% diameter) when Android crops the icon
 - The background must cover the entire 512×512 canvas with no transparency
 
-Present both SVGs as separate labeled code blocks.
+Present both as separate labeled code blocks.
 
 ---
 
-### Phase 3 — PNG Export Commands
+## Phase 3 — PNG Export Commands
 
-After delivering the SVGs, provide copy-paste shell commands to rasterize them. Show all three toolchain options so the user can use whichever is installed.
+After delivering the SVGs, provide copy-paste shell commands to rasterize them. Show all three toolchain options so the user can pick whichever is installed.
 
-#### Sizes to generate
+**Files to generate:**
 
-| Output file | Size | Source SVG |
+| Output file | Size | Source |
 |---|---|---|
 | `favicon-16.png` | 16×16 | `icon.svg` |
 | `favicon-32.png` | 32×32 | `icon.svg` |
@@ -76,9 +68,9 @@ After delivering the SVGs, provide copy-paste shell commands to rasterize them. 
 | `icon-512.png` | 512×512 | `icon.svg` |
 | `icon-192-maskable.png` | 192×192 | `icon-maskable.svg` |
 | `icon-512-maskable.png` | 512×512 | `icon-maskable.svg` |
-| `favicon.ico` | 16+32+48 combined | `favicon-{16,32,48}.png` |
+| `favicon.ico` | 16+32+48 combined | generated PNGs |
 
-#### Option A — rsvg-convert (recommended, most faithful)
+**Option A — rsvg-convert (recommended)**
 
 ```bash
 for size in 16 32 48 64 128 180 192 256 512; do
@@ -92,7 +84,7 @@ rsvg-convert -w 512 -h 512 icon-maskable.svg -o icon-512-maskable.png
 convert favicon-16.png favicon-32.png favicon-48.png favicon.ico
 ```
 
-#### Option B — Inkscape
+**Option B — Inkscape**
 
 ```bash
 for size in 16 32 48 64 128 180 192 256 512; do
@@ -106,7 +98,7 @@ inkscape --export-filename=icon-512-maskable.png -w 512 -h 512 icon-maskable.svg
 convert favicon-16.png favicon-32.png favicon-48.png favicon.ico
 ```
 
-#### Option C — ImageMagick only
+**Option C — ImageMagick only**
 
 ```bash
 for size in 16 32 48 64 128 180 192 256 512; do
@@ -120,13 +112,13 @@ convert -background none -resize 512x512 icon-maskable.svg icon-512-maskable.png
 convert favicon-16.png favicon-32.png favicon-48.png favicon.ico
 ```
 
-> **Note:** ImageMagick's SVG renderer (via librsvg or Ghostscript) is less accurate than rsvg-convert or Inkscape. Prefer Option A or B if available.
+Note: ImageMagick's SVG renderer is less accurate than rsvg-convert or Inkscape. Prefer Option A or B when available.
 
 ---
 
-### Phase 4 — manifest.json Snippet
+## Phase 4 — manifest.json and HTML
 
-Output a ready-to-paste `icons` array. Use **separate entries** for `"any"` and `"maskable"` — do not combine them as `"any maskable"` (deprecated):
+Output a ready-to-paste `manifest.json` `icons` array. Use **separate entries** for `"any"` and `"maskable"` — do NOT use `"any maskable"` (deprecated):
 
 ```json
 "icons": [
@@ -137,7 +129,7 @@ Output a ready-to-paste `icons` array. Use **separate entries** for `"any"` and 
 ]
 ```
 
-Also provide the HTML `<link>` tags for the favicon set:
+Also provide the HTML `<link>` tags:
 
 ```html
 <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
@@ -150,10 +142,10 @@ Also provide the HTML `<link>` tags for the favicon set:
 
 ## Output Checklist
 
-Before finishing, confirm the user has:
+Before finishing, confirm the user has everything:
+
 - [ ] `icon.svg` — standard icon source
 - [ ] `icon-maskable.svg` — maskable variant source
-- [ ] All 11 PNG files generated (or commands ready to run)
-- [ ] `favicon.ico` generated
-- [ ] `manifest.json` snippet
+- [ ] Shell commands for all 11 PNGs + `favicon.ico`
+- [ ] `manifest.json` icons array
 - [ ] HTML `<link>` tags
