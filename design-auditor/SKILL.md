@@ -27,6 +27,7 @@ Ensure sufficient clarity on:
 3. Failure modes  
 4. Performance constraints  
 5. Test strategy  
+6. Module depth & information hiding  
 
 Do NOT rigidly follow a checklist—adapt based on relevance.
 
@@ -94,6 +95,25 @@ Reject answers like “that won’t happen”.
 
 ---
 
+### 6. Module Depth (Ousterhout)
+
+Prefer deep modules: small interfaces that hide large implementation complexity.
+
+Probe for:
+
+- Does the interface hide a meaningful amount of complexity, or does the caller need to understand internals to use it correctly?
+- Must callers issue a sequence of calls to accomplish one logical operation? (sign of shallow decomposition)
+- Are internal representations, intermediate states, or implementation decisions leaking through the interface?
+- Could several small classes/functions be collapsed into one deeper module with no loss of capability?
+- Is complexity being pushed to the caller that the module should own?
+
+Flag:
+- many tiny classes/functions where each does almost nothing — the interface cost exceeds the abstraction benefit
+- interface surface area that mirrors implementation complexity (shallow module)
+- temporal coupling disguised as an API: caller must call A, then B, then C in order
+
+---
+
 ### 5. Test Strategy (TDD Alignment)
 
 Before implementation, force clarity:
@@ -118,6 +138,8 @@ Do NOT accept:
 - assumptions without justification
 - overengineering for simple problems
 - underthinking for complex problems
+- shallow decomposition: many small units with trivial implementations and complex, sequenced call sites
+- interfaces that mirror their implementation (the abstraction hides nothing)
 
 ---
 
