@@ -41,6 +41,8 @@ Use this skill when the user asks for:
 
 ### [MODULE OR FEATURE NAME]
 
+TOP LEVEL last updated date for the document
+
 WHAT IT IS
 - 1–2 sentences. No fluff.
 
