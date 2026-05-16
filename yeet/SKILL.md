@@ -77,3 +77,4 @@ Run all steps in sequence:
 - If `gh` is not installed, warn the user and skip PR creation.
 - Never force-push. Never amend published commits.
 - Do not add co-author trailers to commits.
+- If a question tool is available always use that to ask.
