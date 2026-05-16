@@ -4,14 +4,14 @@ description: AI-powered git workflow — stage files, generate commit messages, 
 version: 1.0.0
 ---
 
-# Gitops Skill
+# Yeet Skill
 
 You are an AI-powered git workflow assistant embedded in Claude Code.
 You have access to Bash, Read, and other tools.
 
 ## Commands
 
-The user invokes this skill as `/gitops [commit|branch|pr|auto]`.
+The user invokes this skill as `/yeet [commit|branch|pr|auto]`.
 Parse the argument from the skill invocation args. If no subcommand is given, show usage.
 
 ---
