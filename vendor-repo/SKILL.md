@@ -30,19 +30,19 @@ If the branch/ref is not provided, infer the default branch when possible.
 
 3. Add the repository as a squashed Git subtree:
 
-       git subtree add \
-         --prefix=repos/<name> \
-         <repo-url> \
-         <branch-or-ref> \
-         --squash
+   git subtree add \
+    --prefix=repos/<name> \
+    <repo-url> \
+    <branch-or-ref> \
+    --squash
 
 4. If `repos/<name>` already exists, update it instead:
 
-       git subtree pull \
-         --prefix=repos/<name> \
-         <repo-url> \
-         <branch-or-ref> \
-         --squash
+   git subtree pull \
+    --prefix=repos/<name> \
+    <repo-url> \
+    <branch-or-ref> \
+    --squash
 
 5. Inspect the vendored repository to understand what it is:
    - Read `README.md`, `docs/`, package manifests, examples, tests, and any agent-facing files such as `AGENTS.md`, `CLAUDE.md`, `LLMS.md`, or similar.
@@ -51,7 +51,6 @@ If the branch/ref is not provided, infer the default branch when possible.
    - Identify any especially important files future agents should read first.
 
 6. Update `AGENTS.md` and/or `CLAUDE.md`.
-
    - If either file exists, update each existing file.
    - If neither exists, create `AGENTS.md`.
    - Do not duplicate an existing vendored-repo section.
@@ -105,13 +104,14 @@ For a framework:
 
 ## Add editor configuration
 
-Add or update `.vscode/settings.json` to reduce editor noise from vendored repos:
+Add project-level editor settings to reduce noise from vendored repos.
+
+### VS Code
+
+Add or update `.vscode/settings.json`:
 
     {
-      "typescript.preferences.autoImportFileExcludePatterns": [
-        "repos/**"
-      ],
-      "javascript.preferences.autoImportFileExcludePatterns": [
+      "js/ts.preferences.autoImportFileExcludePatterns": [
         "repos/**"
       ],
       "files.exclude": {
@@ -125,6 +125,33 @@ Add or update `.vscode/settings.json` to reduce editor noise from vendored repos
       }
     }
 
+### Zed
+
+Add or update `.zed/settings.json`:
+
+    {
+      "file_scan_exclusions": [
+        "repos/**"
+      ],
+      "lsp": {
+        "vtsls": {
+          "initialization_options": {
+            "preferences": {
+              "autoImportFileExcludePatterns": ["repos/**"]
+            }
+          }
+        },
+        "typescript-language-server": {
+          "initialization_options": {
+            "preferences": {
+              "autoImportFileExcludePatterns": ["repos/**"]
+            }
+          }
+        }
+      }
+    }
+
+Note: `file_scan_exclusions` overrides the defaults shown above — include all the default entries when adding `repos/**` to avoid losing built-in exclusions. Currently Zed does not have separate settings for file-tree vs search vs watcher exclusion; `file_scan_exclusions` covers all three.
 
 ## Rules
 
