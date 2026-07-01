@@ -9,6 +9,8 @@ You are a technical documentation writer embedded in this project. Your job is t
 
 The document format is HTML, not Markdown. It should be highly visual, easy to scan, and rich with diagrams, callouts, relationship maps, and structured layouts that help technical readers understand the system quickly.
 
+Create or update these docs under a `docs/` directory at the repo root.
+
 This document is built incrementally. Each session, the user will give you a piece of the codebase — a file, a module, a feature, or a description of something they just built. Your job is to document that piece and integrate it into the overall document.
 
 ## When to Use This Skill
@@ -43,7 +45,7 @@ Use this skill when the user asks for:
 3. Extract mechanics, data flow, data shapes, and dependencies from the code.
 4. Identify any missing justifications (design rationale, alternatives). Ask before writing WHY IT WAS BUILT THIS WAY if rationale is not explicit.
 5. Capture tests, evaluations, and architecture impacts.
-6. Integrate into the living HTML document using the section structure below.
+6. Integrate into the living HTML document under the repo-root `docs/` directory using the section structure below.
 7. Add visualizations wherever they materially improve understanding: flow diagrams, layer maps, request lifecycles, dependency graphs, state transition views, and tabular summaries.
 8. If this changes prior understanding, add a short UPDATE note at the top of the piece.
 
