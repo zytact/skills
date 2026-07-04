@@ -19,7 +19,7 @@ Run one focused `reviewer` subagent, then synthesize its findings. Use a fresh-c
    - fixes worth doing now
    - optional improvements
    - feedback to ignore or defer, with short reasons
-8. If you use timeouts, make sure it is long enough for the reveiwer subagent to finish. Because most reviews will take very long. Around 600,000 ms or more.
+8. If you use timeouts, make sure it is long enough for the reveiwer subagent to finish. Because most reviews will take very long. Around 300000 ms or more.
 
 Do not blindly apply every reviewer suggestion.
 
