@@ -46,7 +46,7 @@ Each smell reads what it is → how to fix; match it against the diff:
 - Refused Bequest — a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
 
 ### Match intention: does the code faithfully implement the originating issue / PRD / spec?
-- Look for the originating spec, github issue, ticket, etc. It will probably be mentioned, but if not, look for it.
+- Look for the originating spec, github issue, ticket, plan, etc. It will probably be mentioned, but if not, look for it.
 - If nothing is found, skip this part saying "No spec available".
 
 ## Autofix
