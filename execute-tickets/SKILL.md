@@ -1,71 +1,117 @@
 ---
 name: execute-tickets
-description: Execute an ordered range or list of implementation tickets end to end using supervised coding subagents, one commit per ticket, final code review, fixes, and a pull request.
+description: Use coding subagents to implement a specified range or list of tickets. Make one commit for each ticket. Complete a code review and create a pull request.
 disable-model-invocation: true
 ---
 
 # Execute Tickets
 
-Run the ticket sequence continuously. The parent agent owns orchestration, review, commits, and final integration. Subagents implement bounded tickets but never commit or push.
+Run all tickets in the specified sequence. Do not stop between tickets.
+
+The parent agent controls the work, reviews results, makes commits, and completes the integration. Subagents implement specified tickets. They do not commit or push.
 
 ## Defaults
 
-Unless the user overrides them:
+If the user does not give different instructions, use these defaults:
 
-- Create a new branch following repository conventions.
-- Use model and reasoning level based on your choice for the ticket complexity.
-- Process tickets in dependency order.
+- Create a new branch that follows the repository rules.
+- Select the model and reasoning level for the complexity of each ticket.
+- Complete the tickets in dependency order.
 - Commit each accepted ticket separately.
-- After all tickets, invoke the `code-review` skill with model and reasoning level based on what is best for both axes.
-- Fix confirmed review findings in the parent session, then rerun validation and commit the fixes.
-- Delegate filing the PR to another subagent. This is an easy task so reasoning level does not need to be that high. Require it to read and follow the `file-pr` skill. The PR subagent must not alter implementation code.
+- After all tickets are complete, use the `code-review` skill.
+- Select the best model and reasoning level for each review type.
+- Examine the review results in the parent session.
+- Fix each problem that you find.
+- Run the validation again.
+- Commit the fixes.
+- Use another subagent to create the pull request.
+- Use a low reasoning level unless the task needs a higher level.
+- Tell this subagent to read the `file-pr` skill.
+- Tell this subagent to obey the `file-pr` skill.
+- Do not let the pull-request subagent change implementation code.
 
-Explicit user choices always replace these defaults.
+The user instructions always replace these defaults.
 
-## Prepare
+## Preparation
 
-1. Read repository and project instructions.
-2. Confirm the worktree, current branch, remotes, issue tracker, package tooling, and validation commands.
-3. Fetch every requested ticket and its parent/umbrella issue. Determine dependencies and acceptance criteria before editing.
-4. Inspect existing uncommitted changes. Preserve them and identify which ticket, if any, owns them.
-5. Create the branch unless the user requested the current branch.
-6. Build a short execution ledger containing ticket order, dependency, status, commit, and validation result.
+1. Read the repository instructions and the project instructions.
+2. Identify the worktree, current branch, remotes, issue tracker, package tools, and validation commands.
+3. Fetch each specified ticket and its parent issue.
+4. Identify the dependencies and acceptance criteria before you edit files.
+5. Examine the uncommitted user changes.
+6. Do not change the user work.
+7. Identify the ticket that owns each change, if applicable.
+8. Make the branch unless the user tells you to use the current branch.
+9. Make a short execution record.
+10. Include the ticket order, dependencies, status, commit, and validation result in this record.
 
-Do not ask for information that the repository, issue tracker, or user request already provides.
+Do not tell the user to give information that the repository, issue tracker, or user instruction supplies.
 
-## Decide concurrency
+## Concurrent work
 
-Default to sequential execution. Parallelize only tickets that are dependency-independent and have disjoint file ownership.
+Use sequential execution by default. Use parallel execution only for dependency-independent tickets with separate file ownership.
 
-Before parallel work, state each subagent's ticket and file ownership. Never run agents concurrently when shared generated files, schemas, migrations, central registries, or likely integration points could collide. Integrate and review each result independently.
+Before parallel execution, state the ticket and file ownership for each subagent. Do not run subagents concurrently if their work can change the same files.
 
-## Execute each ticket
+Shared generated files, schemas, migrations, central registries, and integration points can cause errors. Examine each result independently. Integrate each result independently.
+
+## Ticket execution
 
 For each ticket:
 
-1. Re-read the issue against the current committed state and inspect relevant code, docs, and prior ticket changes.
-2. Spawn a fresh coding subagent with a self-contained prompt that includes:
-   - repository path, branch, and prerequisite commits;
-   - the exact ticket and instruction not to implement later tickets;
-   - issue-fetching instructions and relevant parent issue;
-   - repository guidance and files or skills it must read;
-   - acceptance criteria, constraints, existing seams, and known uncommitted user work;
-   - focused test and repository validation expectations;
-   - `Do not commit or push`;
-   - a required report covering changed files, design, acceptance coverage, validation, and uncertainties.
-3. Monitor the child. Continue useful inspection while it runs.
-4. Review the actual diff and tests yourself. Compare behavior to every acceptance criterion, check scope, inspect repository status, and run the relevant validation independently.
-5. If work is incomplete or poorly shaped, steer the same implementation through a focused revision prompt. State the concrete defect and required outcome rather than asking for a generic re-review.
-6. Commit only after the implementation and validation passes. Follow repository commit conventions and keep the commit scoped to that ticket.
-7. Update the execution ledger and immediately continue to the next unblocked ticket.
+1. Read the issue again against the most recent commit.
+2. Examine the applicable code, documentation, and changes from previous tickets.
+3. Start a new coding subagent.
+4. Give the subagent a prompt that contains all necessary information.
+5. Include this information in the prompt:
+   - The repository path, branch, and prerequisite commits
+   - The exact ticket
+   - An instruction not to implement later tickets
+   - Instructions to fetch the issue and its parent issue
+   - The repository guidance and the necessary files or skills
+   - The acceptance criteria, constraints, existing extension points, and known user changes
+   - The focused tests and repository validation
+   - The instruction, `Do not commit or push`
+   - A report of changed files, design, acceptance coverage, validation, and information that is not clear.
+6. Monitor the subagent.
+7. Continue useful inspection while the subagent runs.
+8. Examine the diff and tests.
+9. Compare the result with each acceptance criterion.
+10. Check the scope.
+11. Examine the repository status.
+12. Run the applicable validation independently.
+13. If the work has defects, send the same subagent a specified revision prompt.
+14. State the defect and the necessary result.
+15. Do not ask the subagent to examine all work again.
+16. Commit only after the implementation and validation pass.
+17. Follow the repository commit rules.
+18. Keep the commit limited to that ticket.
+19. Update the execution record.
+20. Continue immediately to the next ticket that is not blocked.
 
-Do not stop after reporting an intermediate ticket. Pause only for a genuine blocker, destructive decision, unresolved requirement conflict, or required user action.
+Do not stop after a ticket. Pause for a blocker, a decision that can cause damage, requirements that do not agree, or a necessary user action.
 
 ## Final integration
 
-1. Run the repository's complete validation suite and `git diff --check`.
-2. Confirm the requested ticket set is complete and each ticket maps to a focused commit.
-3. Load and follow the `code-review` skill. Use the configured review agents for both Standards and Spec axes, supplying the fixed point, ticket sources, standards sources, and complete diff.
-4. Verify review findings against the code. Fix confirmed issues yourself, rerun complete validation, and commit the fixes. Do not blindly implement review suggestions.
-5. Spawn the configured PR subagent. Give it the branch, base, ticket list, commit summary, validation results, and instruction to read the `file-pr` skill. It may push and file the PR, but must not change implementation code or rewrite commits.
-6. Verify the resulting PR metadata and return the PR URL, branch, ticket coverage, commits, validation, and any honest limitations.
+1. Run the complete repository validation suite.
+2. Run `git diff --check`.
+3. Make sure that the specified ticket set is complete.
+4. Make sure that each ticket has one commit that only contains work for that ticket.
+5. Load the `code-review` skill.
+6. Obey the `code-review` skill.
+7. Use the configured review agents for the Standards review and the Spec review.
+8. Give them the fixed Git reference, ticket sources, standards sources, and complete diff.
+9. Check each review result against the code.
+10. Fix the confirmed problems in the parent session.
+11. Run the complete validation again.
+12. Commit the fixes.
+13. Start the configured pull-request subagent.
+14. Give it the branch, base, ticket list, commit summary, and validation results.
+15. Tell it to read the `file-pr` skill.
+16. Tell it to obey the `file-pr` skill.
+17. Tell it that it can push the branch.
+18. Tell it that it can create the pull request.
+19. Do not let it change implementation code.
+20. Do not let it rewrite commits.
+21. Check the pull-request metadata.
+22. Give the pull-request URL, branch, ticket coverage, commits, validation, and all known limits.

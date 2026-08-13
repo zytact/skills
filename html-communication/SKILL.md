@@ -1,8 +1,21 @@
 ---
 name: html-communication
-description: When the user asks to communicate through an HTML document, or if they mention "HTML" with no additional context.
+description: Use when the user tells you to communicate in an HTML document. Also use when the user says "HTML" without more information.
 ---
 
-In `.plans/` directory, (if doesn't exist create it and make sure it is gitignored) create a thorough, well-researched plan, that contains your "taste" of how things should be architected and coding style for an implementation that is aesthetically pleasing to a human and has visualization for humans to understand if necessary. The design should mimic the project. If the project doesn't have a design (e.g., if a CLI or TUI project), use [Raycast](https://www.raycast.com) like design. The plan should have a timestamp of when it was created. The html should automatically detect light and dark theme from the browser and support both.
+# HTML Communication
 
-Once done use `/postplan`  skill to host the html plan
+1. Make the `.htmls/` directory if it does not exist.
+2. Make sure that the repository ignores the `.htmls/` directory.
+3. Make the html as one HTML file in the `.htmls/` directory.
+4. Use good visual design.
+5. Add visualizations when they help the reader understand better.
+6. Match the design of the project.
+7. If the project has no design, use a [Raycast](https://www.raycast.com)-like design.
+8. Include a creation timestamp in the plan.
+9. Use `prefers-color-scheme` for browser-theme detection.
+10. Support light and dark themes.
+11. Load the `postplan` skill.
+12. Obey the `postplan` skill.
+13. Upload the HTML plan to Postplan.
+14. Give the Postplan URL to the user.
