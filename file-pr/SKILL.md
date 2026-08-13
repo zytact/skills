@@ -25,4 +25,6 @@ BAD
 GOOD
 > My "new worktree" default was ignored when starting new threads on existing worktrees. Super unintuitive. Now your preferences always apply.
 
-Open a real PR rather than a draft so review bots run. If the user also asked to babysit it.
+If the PR closes one or more issues, use "Closes #<issue_number>" in the body.
+
+Open a real PR rather than a draft so review bots run. If the user also asked, babysit it too.
