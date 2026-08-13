@@ -1,4 +1,3 @@
-````md
 ---
 name: code-review
 description: Review changes since a fixed point such as a commit, branch, tag, or merge-base along two separate axes. Standards checks whether the code follows the repo's documented coding standards. Spec checks whether the code matches the originating issue or spec. Run both reviews in parallel sub-agents and report them separately. Use when the user wants to review a branch, PR, work-in-progress changes, or asks to "review since X".
@@ -11,7 +10,7 @@ Review the diff between `HEAD` and a fixed point supplied by the user along two 
 
 Run the two reviews in parallel sub-agents so their reasoning stays independent. Aggregate the results without merging or reranking them.
 
-The issue tracker should already be configured.
+The issue tracker should already be configured. If `docs/agents/issue-tracker.md` is missing, run `/setup-matt-pocock-skills`.
 
 ## Process
 
@@ -26,7 +25,6 @@ Use this diff:
 ```sh
 git diff <fixed-point>...HEAD
 ```
-````
 
 The three-dot form compares `HEAD` against the merge-base.
 
@@ -169,7 +167,4 @@ Code may follow every project standard while implementing the wrong behavior. Th
 Code may implement the requested behavior correctly while breaking the project's conventions. That is a Spec pass and a Standards fail.
 
 Keeping the reports separate prevents one kind of correctness from hiding problems in the other.
-
-```
-
 ```
