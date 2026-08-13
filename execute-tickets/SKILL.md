@@ -55,6 +55,34 @@ Before parallel execution, state the ticket and file ownership for each subagent
 
 Shared generated files, schemas, migrations, central registries, and integration points can cause errors. Examine each result independently. Integrate each result independently.
 
+## Subagent liveness
+
+A subagent that is thinking is not necessarily a subagent that has failed. High reasoning levels produce long stretches with no file writes and no visible output. Treat only the absence of agent activity as evidence of failure.
+
+Use the agent activity stream and the agent list as the liveness signal. A subagent is alive while it is still running, whatever it has or has not written yet.
+
+Do not use these as evidence of failure:
+
+- No file written yet.
+- No reply to a status message. A busy subagent cannot process an incoming message until its current turn ends, so an unanswered ping is expected, not a symptom.
+- Silence between tool calls.
+- A long single reasoning stretch.
+
+Give each subagent a first-output budget before you judge it. Measure from the spawn, and count any tool call as output:
+
+Interrupt a subagent only when one of these is true:
+
+- No agent activity at all for the budget above.
+- The turn ends with an error or with no result.
+- The subagent reports a blocker.
+- Its work conflicts with another subagent or with user changes.
+
+Apply the full budget to every retry. Do not shorten the budget after an interruption. Two short interruptions are not evidence that a model is unusable.
+
+Before you call a model unusable, confirm from the transcript that it produced no tool calls within its budget. If it was interrupted before the budget, the interruption is the failure, not the model.
+
+Keep the model and reasoning level the user requested. If you want to change either, report what you observed and ask first.
+
 ## Ticket execution
 
 For each ticket:
@@ -73,7 +101,7 @@ For each ticket:
    - The focused tests and repository validation
    - The instruction, `Do not commit or push`
    - A report of changed files, design, acceptance coverage, validation, and information that is not clear.
-6. Monitor the subagent.
+6. Monitor the subagent as described in "Subagent liveness".
 7. Continue useful inspection while the subagent runs.
 8. Examine the diff and tests.
 9. Compare the result with each acceptance criterion.
