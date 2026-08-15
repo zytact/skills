@@ -13,20 +13,20 @@ The objective is not to maximize:
 
 * pull request count,
 * GitHub activity,
-* easy merges,
 * contribution streaks,
-* famous repositories,
-* or work that merely matches the contributor's existing skills.
+* easy merges,
+* famous repository names,
+* or work that merely matches the contributor's current stack.
 
-The objective is to find work that can convert engineering ability into:
+The objective is to convert engineering ability into:
 
 1. **Strong technical evidence**
-2. **External validation from respected maintainers**
-3. **Useful contributor relationships**
+2. **External validation**
+3. **Useful maintainer relationships**
 4. **A coherent open-source reputation**
 5. **Better employment or internship prospects**
 
-It is better to return 6 genuinely strong opportunities than 15 padded ones.
+It is better to return 6 excellent opportunities than 15 padded ones.
 
 The scout must distinguish between:
 
@@ -47,7 +47,7 @@ The user gives two dynamic inputs.
 
 A list of projects or repositories.
 
-It can also be:
+It may also be:
 
 * a URL containing repositories,
 * a machine-generated inventory,
@@ -58,23 +58,24 @@ Keep the source for each project.
 
 ## Input 2 — Contributor Profile
 
-The contributor profile contains:
+The contributor profile can contain:
 
 * skills,
 * languages,
-* current experience,
-* projects,
+* experience level,
+* personal projects,
 * previous OSS work,
 * career goals,
-* technologies they actively use,
-* technologies they are willing to learn,
-* and any constraints.
+* technologies actively used,
+* technologies the contributor is willing to learn,
+* current employment/internship goals,
+* and relevant constraints.
 
 Ask for the contributor profile only when it was not supplied.
 
 Do not assume that unfamiliar technology means poor fit.
 
-If the contributor has demonstrated an ability to learn unfamiliar codebases, treat unfamiliarity mainly as an **onboarding cost**, not as a reason to reject technically valuable work.
+If the contributor has demonstrated the ability to enter unfamiliar codebases, treat unfamiliarity mainly as an **onboarding cost**, not as a reason to reject technically valuable work.
 
 ---
 
@@ -87,130 +88,244 @@ A contribution is valuable when it improves the contributor's external career po
 Do not optimize for:
 
 * "getting the contribution graph moving,"
-* accumulating many small merges,
-* collecting contributor badges,
+* collecting many tiny merges,
+* contributor badges,
+* arbitrary GitHub visibility,
 * or having many repositories listed on a résumé.
 
-One technically meaningful, well-reviewed contribution can be more valuable than ten trivial merges.
+One technically meaningful, well-reviewed contribution can be worth more than ten trivial merges.
+
+---
 
 ## 2. Distinguish career signal from difficulty
 
-A large or difficult issue is not automatically impressive.
-
-Career signal comes from the engineering story that remains after the work is finished.
+A difficult issue is not automatically a valuable issue.
 
 Ask:
 
-> If the contributor explains this contribution in an interview, what does it prove?
+> If this contribution is merged and explained in an interview, what does it prove?
 
-Examples of strong signals include:
+Strong evidence may include:
 
 * tracing and fixing a semantic compiler bug,
-* redesigning concurrent API operations safely,
-* fixing protocol translation across providers,
-* addressing a performance bottleneck in a production editor,
-* implementing a platform protocol correctly,
-* debugging state synchronization or concurrency,
-* correcting subtle browser/runtime behavior,
-* or changing architecture with strong regression coverage.
+* safely redesigning concurrent operations,
+* fixing protocol translation,
+* improving production performance,
+* implementing platform or OS protocols,
+* debugging state synchronization,
+* correcting subtle runtime behavior,
+* addressing networking or streaming problems,
+* changing architecture with regression coverage.
 
-A large CSS diff or mechanical rule port can still be useful, but should not receive the same career score.
+A large diff is not automatically impressive.
 
-## 3. Do not confuse acceptance with value
+A small diff can still be highly impressive when the reasoning is deep.
 
-A 95% chance of merging a trivial fix does not automatically beat a 65% chance of merging a substantial contribution.
+---
 
-Acceptance probability is important because unreviewed work has little external value.
+## 3. Do not confuse acceptance probability with value
 
-But acceptance probability is a multiplier on useful work, not the final objective.
+A 95% chance of merging a trivial change does not automatically beat a 65% chance of merging a substantive contribution.
 
-## 4. Separate accessibility from network value
+Acceptance probability matters because work that is never reviewed produces little external validation.
 
-Do not use one combined "Maintainer and Network Upside" score.
+But acceptance is a multiplier on useful work, not the goal itself.
 
-Use two different concepts:
+---
+
+## 4. Separate maintainer accessibility from professional network value
+
+Do not combine these into one score.
 
 ### Maintainer Accessibility
 
-How likely is a good external contributor to:
+How likely is a good outside contributor to:
 
 * receive review,
 * get useful feedback,
-* have discussions,
-* and become recognizable through repeated good work?
+* discuss implementation choices,
+* become recognizable,
+* and build contributor trust?
 
 ### Professional Network Value
 
-If the contributor becomes known in this community, how valuable could those relationships be professionally?
+If the contributor becomes known in this community, how professionally useful could those relationships become?
 
 Consider:
 
 * ecosystem relevance,
-* maintainer roles,
+* maintainers' roles,
 * companies involved,
-* adjacent projects,
-* hiring/network effects,
-* and whether repeat contributors actually enter the project's social orbit.
+* adjacent communities,
+* potential referral/hiring value,
+* whether repeat contributors actually enter the project's social orbit.
 
-A famous maintainer who rarely interacts with contributors does not automatically produce high network value.
+A famous maintainer who barely interacts with contributors does not automatically provide high network value.
 
-A less-famous maintainer who deeply reviews contributors may have high accessibility.
+A less-famous maintainer who gives deep reviews may have excellent accessibility.
 
-## 5. Distinguish proactive hunting from opportunistic contribution
+---
 
-Some repositories are poor places to search for random issues but excellent places to contribute when the contributor personally encounters a bug.
+## 5. Reconcile written contribution policy with current behavior
 
-For every repository classify it as one of:
+This is a critical rule.
 
-* **Proactive Target**
+Do **not** treat the CONTRIBUTING file, README, or issue templates as the sole source of truth.
+
+Do **not** treat recent merge history as the sole source of truth either.
+
+You must reconcile both.
+
+### When policy sounds restrictive but recent behavior is welcoming
+
+If written policy says things such as:
+
+* unsolicited PRs may be ignored,
+* contributors should discuss changes first,
+* large PRs are discouraged,
+* or maintainers reserve the right to close outside work,
+
+but recent evidence shows:
+
+* frequent external merges,
+* substantive first-time contributors,
+* active maintainer review,
+* and repeat outside contributors,
+
+do **not** reject the repository.
+
+Instead classify it according to both realities.
+
+Examples:
+
+* `High Competition / External PRs Accepted`
+* `Discuss First`
+* `Opportunistic`
+* `Small Focused PRs Preferred`
+
+Explain the discrepancy.
+
+### When policy explicitly forbids unsolicited PRs
+
+If current policy explicitly says that outside code PRs are:
+
+* invitation-only,
+* normally closed without review,
+* or not accepted unless maintainers request implementation,
+
+then do not classify the repository as a normal actionable contribution target merely because external contributors occasionally appear in history.
+
+Classify it as:
+
+* `Invitation-Only`
+* `Issue Analysis / Diagnosis First`
+* or `Opportunistic by Invitation`
+
+Only recommend code contribution when there is evidence that an invitation is realistically obtainable for the specific issue.
+
+### When policy and behavior conflict
+
+Prefer current behavior for estimating:
+
+* contributor friendliness,
+* review likelihood,
+* and actual repository openness.
+
+But preserve explicit policy constraints when they directly control whether unsolicited code is allowed.
+
+Always state the conflict.
+
+Never silently choose one side.
+
+---
+
+## 6. Distinguish proactive hunting from opportunistic contribution
+
+Some repositories are poor places to browse random issues but excellent places to contribute when the contributor personally encounters a bug.
+
+Classify every repository as one of:
+
 * **Repeat-Contributor Target**
+* **Proactive Target**
 * **Stretch Target**
 * **Opportunistic Only**
+* **Invitation-Only / Diagnosis First**
 * **Skip**
 
-Examples of reasons for `Opportunistic Only`:
+Examples of `Opportunistic Only`:
 
-* huge issue/PR competition,
-* contributor already has unusually strong product intuition,
-* good fixes are valuable but disappear quickly,
-* difficult to find uncontested work proactively.
+* extremely crowded project,
+* good issues get claimed quickly,
+* contributor has unusually strong product intuition,
+* worthwhile fixes appear organically during use,
+* proactive issue hunting has poor expected value.
 
 Do not reject such repositories outright.
 
-## 6. Reward coherent trajectories
+---
 
-Repeated substantial work in one ecosystem can be more valuable than isolated work across many repositories.
+## 7. Reward coherent contribution trajectories
 
-Look for possible trajectories such as:
+Repeated substantive work in one ecosystem can be more valuable than unrelated work scattered across many repositories.
 
-> easy entry issue → substantive issue → recognized recurring contributor
+Look for trajectories such as:
 
-or:
-
-> ecosystem library → adjacent tooling → deeper core contribution
+> bounded entry issue → substantive follow-up → recognized contributor
 
 or:
 
-> familiar project → reviewed contribution → harder architectural contribution
+> ecosystem tool → adjacent package → deeper core contribution
 
-The scout should identify these explicitly.
+or:
+
+> familiar project → reviewed contribution → architectural issue
+
+The scout should explicitly identify these opportunities.
+
+---
+
+## 8. Do not overfit personalization
+
+Personalization is useful only when it changes expected execution quality.
+
+Do not manufacture personal relevance.
+
+Ask:
+
+> Does this contributor's prior experience materially improve their ability to reproduce, understand, implement, or explain this issue?
+
+Examples of legitimate personal advantage:
+
+* actively uses the affected feature,
+* has experienced the bug,
+* has built a similar subsystem,
+* already understands the protocol,
+* knows adjacent tooling,
+* knows the language/runtime/environment.
+
+Weak connections such as "the contributor uses Linux and this is a Linux app" should not receive large score boosts by themselves.
 
 ---
 
 # Step 1 — Collect the Projects
 
-Make a list of all candidate projects from Input 1.
+Build a canonical list of candidate repositories from Input 1.
 
-For each project record:
+Record:
 
 * repository URL,
-* source of discovery,
+* source,
 * whether the contributor actively uses it,
-* whether the contributor has its source checked out,
-* relevant languages,
-* and broad project category.
+* whether the contributor has the source locally,
+* main languages,
+* project category.
 
-Deduplicate forks, mirrors, renamed repositories, and duplicate inventory entries.
+Deduplicate:
+
+* forks,
+* mirrors,
+* renamed repositories,
+* duplicated inventory entries.
 
 ---
 
@@ -218,59 +333,58 @@ Deduplicate forks, mirrors, renamed repositories, and duplicate inventory entrie
 
 Do not deeply inspect every repository.
 
-Group related projects into clusters such as:
+Create clusters such as:
 
 * AI developer tooling
+* editors
 * terminals and shells
 * compilers and language tooling
-* browser tooling/extensions
-* infrastructure/networking
+* browser tooling
+* infrastructure and networking
 * CLI utilities
-* editors
 * Python tooling
 * Rust systems software
 * web frameworks
-* media tooling
 * desktop Linux
-* other relevant clusters
+* media tooling
+* other relevant groups
 
-Use the contributor profile to prioritize clusters.
+Use the contributor profile to prioritize.
 
-Do not reject a project solely because its main language is unfamiliar.
+For each repository estimate:
 
-Instead estimate:
+* Domain Fit
+* Onboarding Cost
+* Potential Career Value
 
-* **Domain Fit**
-* **Onboarding Cost**
-* **Potential Career Value**
+Do not reject a project merely because:
 
-Skip projects where all three are poor.
+* the language is unfamiliar,
+* the codebase is large,
+* or the project is a monorepo.
 
-Skip giant monorepos only when the likely payoff is weak relative to the onboarding friction.
-
-A difficult monorepo with unusually strong technical or professional upside may remain a Stretch Target.
+Reject only when the opportunity cost is clearly poor.
 
 ---
 
-# Step 3 — Investigate Clusters in Parallel
+# Step 3 — Investigate Clusters with Subagents
 
-Use one subagent for each cluster.
+Use one subagent per non-overlapping cluster.
 
-Give each subagent a non-overlapping set of repositories.
+Each subagent performs Steps 4 through 9 for its cluster.
 
-Each subagent performs Steps 4 through 8.
+Run them concurrently when supported.
 
-Run subagents concurrently where supported.
-
-Do not run the entire investigation through one agent when multiple clusters exist.
-
-Require every subagent to return:
+Each subagent must return:
 
 * repository-level findings,
 * issue-level findings,
 * rejected repositories,
 * unresolved uncertainties,
-* and evidence.
+* evidence URLs,
+* and confidence.
+
+Do not make one agent scan a huge heterogeneous repository set when clustering is possible.
 
 ---
 
@@ -278,22 +392,22 @@ Require every subagent to return:
 
 Use current GitHub data.
 
-Prefer the `gh` CLI and GitHub API.
-
-Useful commands include:
+Prefer:
 
 * `gh repo view`
 * `gh pr list`
 * `gh issue list`
 * `gh api`
 
-Avoid wasting search API quota.
+Use `gh search` sparingly.
 
-Use activity primarily from the last **30–90 days**.
+Focus primarily on the last **30–90 days**.
 
-Historical evidence can be used when necessary, but label it as historical.
+Older evidence may be used when current samples are thin, but label it as historical.
 
-## Contribution policy
+---
+
+## 4A. Read contribution policy
 
 Read:
 
@@ -301,34 +415,65 @@ Read:
 * README contribution sections
 * issue templates
 * PR templates
-* relevant maintainer comments
+* relevant discussions
+* recent maintainer comments
 
-Do not trust obviously stale contribution warnings without comparing them against current behavior.
+Extract:
 
-Current merge behavior takes precedence over old prose when they conflict.
+* whether outside PRs are accepted,
+* whether issue discussion is expected first,
+* whether large PRs are discouraged,
+* whether new contributors face special rules,
+* whether invitation is required.
 
-## Sample recent merged PRs
+Do not stop here.
 
-Inspect approximately 40–100 recent merged PRs when the repository has enough activity.
+---
+
+## 4B. Inspect actual recent behavior
+
+Read approximately 40–100 recent merged PRs where possible.
 
 Determine:
 
-* how many were internal/core team,
-* how many were bots,
-* how many came from outside contributors,
-* how many came from apparent first-time contributors,
-* how many external contributions were substantive,
-* review latency,
-* merge latency,
-* maintainer interaction quality.
+* internal/core-team share,
+* bot share,
+* external contributor share,
+* apparent first-time contributor share,
+* substantive external merge share,
+* typical review latency,
+* typical merge latency,
+* quality of maintainer interaction.
 
-Do not count dependency bots as contributor friendliness.
+Do not count dependency bots as evidence of contributor friendliness.
 
-Do not count typo/documentation-only external PRs as proof that substantive outside contributions are welcomed.
+Do not count typo-only merges as evidence that substantive external contributions are welcome.
 
-## Repository classifications
+---
 
-Assign each repository:
+## 4C. Reconcile policy and behavior
+
+Produce a short explicit note:
+
+**Written policy:**
+**Observed behavior:**
+**Conclusion:**
+
+Examples:
+
+> Written policy warns that unsolicited PRs may be ignored, but 18 substantive external PRs were merged in the last 45 days. Treat as contributor-friendly but high-competition; discuss larger changes first.
+
+or:
+
+> Recent history includes outside contributors, but current policy explicitly says unsolicited code PRs are closed unless invited. Treat as invitation-only; recommend diagnosis/design contribution first.
+
+This field is mandatory.
+
+---
+
+## 4D. Repository scores
+
+Assign:
 
 ### External Contribution Health
 
@@ -366,165 +511,175 @@ One of:
 * Proactive Target
 * Stretch Target
 * Opportunistic Only
+* Invitation-Only / Diagnosis First
 * Skip
 
 ---
 
-# Step 5 — Reject or Downgrade Bad Targets
+# Step 5 — Reject or Downgrade Poor Targets
 
-Reject or heavily downgrade a repository when current evidence shows:
+Reject or heavily downgrade when evidence shows:
 
-* unsolicited external PRs are normally rejected;
-* external contributors rarely receive substantive merges;
-* almost all recent merges come from bots or core team members;
-* contributions regularly sit untouched for long periods;
-* contribution policy requires access the contributor cannot obtain;
-* issues are routinely claimed before outside contributors can act;
-* maintainers have effectively abandoned issue triage;
-* work requires proprietary infrastructure unavailable to the contributor.
+* unsolicited outside PRs are normally closed;
+* substantive external work is rarely merged;
+* almost all merges are bots or core team;
+* outside PRs sit untouched for long periods;
+* required infrastructure is inaccessible;
+* issues are routinely claimed immediately;
+* maintainers are not triaging the tracker;
+* project is effectively abandoned.
 
-Do not automatically reject a repository merely because:
+Do not reject merely for:
 
-* it has many open PRs,
-* it is large,
-* it has difficult code,
-* or the contributor does not know the main language.
+* high PR count,
+* large codebase,
+* difficult technology,
+* unfamiliar language,
+* restrictive wording that current behavior contradicts.
 
-Those should affect Competition or Onboarding Cost instead.
+These belong in Competition, Onboarding Cost, or Policy/Behavior reconciliation.
 
 ---
 
 # Step 6 — Find Candidate Issues
 
-Search open issues in repositories that survived Step 5.
+Search surviving repositories for:
+
+* correctness bugs,
+* regressions,
+* performance problems,
+* concurrency issues,
+* state synchronization bugs,
+* protocol incompatibilities,
+* provider translation bugs,
+* networking issues,
+* parser/compiler bugs,
+* platform-specific failures,
+* integration bugs,
+* architecture problems,
+* maintainer-requested missing behavior,
+* reproducible issues with no implementation,
+* recently active maintainer-backed issues,
+* older still-relevant actionable issues.
 
 Do not restrict discovery to:
 
 * `good first issue`
 * `help wanted`
 
-Search for:
-
-* correctness bugs
-* regressions
-* performance problems
-* concurrency problems
-* state-management bugs
-* protocol incompatibilities
-* provider translation bugs
-* networking problems
-* parser/compiler bugs
-* platform-specific problems
-* integration failures
-* architecture problems
-* important missing behavior
-* issues with maintainers proposing a likely solution
-* reproducible bugs without an existing implementation
-* recent high-interest issues
-* older issues that remain relevant and actionable
+---
 
 ## Reject an issue when
 
 * someone is actively assigned and working on it;
-* a current PR already addresses it;
-* another contributor has clearly claimed it;
+* an open PR already addresses it;
+* another contributor clearly claimed it;
 * it is stale and maintainers appear uninterested;
-* it is too vague to scope;
-* it needs unavailable proprietary infrastructure;
-* it is a speculative feature with no maintainer support;
-* solving it would mostly be typo/documentation work;
-* it is obviously mechanical and provides little strategic benefit;
-* it would require months of full-time work before producing reviewable value.
+* scope is too vague;
+* required infrastructure is inaccessible;
+* it is speculative with no maintainer support;
+* it is mostly typo/docs work;
+* it is mechanically trivial with little strategic value;
+* it appears to require months before producing reviewable value.
 
-An assigned issue may remain only when maintainers explicitly invite parallel/external implementation.
-
-## Prefer issues where
-
-* maintainers confirmed the bug;
-* maintainers described the likely shape of the fix;
-* the issue is reproducible;
-* expected behavior is clear;
-* relevant tests exist;
-* no competing PR exists;
-* the contributor has relevant product intuition;
-* the contribution creates a strong engineering story;
-* the issue opens a pathway to deeper work in the same ecosystem.
+An assigned issue may remain only if maintainers explicitly welcome another implementation.
 
 ---
 
-# Step 7 — Perform a Feasibility Pass Before Scoring Highly
+## Prefer an issue when
 
-Do not rank an issue highly from its title and discussion alone.
+* maintainers confirmed it;
+* maintainers described likely fix shape;
+* reproduction is clear;
+* expected behavior is clear;
+* tests exist nearby;
+* no competing PR exists;
+* contributor has genuine product intuition;
+* contribution creates a strong engineering story;
+* it opens a path to deeper work in the same ecosystem.
 
-For serious candidates inspect enough code to answer:
+---
 
-* Where does the bug likely live?
-* What subsystem is involved?
-* What files/modules are likely relevant?
-* Is the apparent solution local or architectural?
-* Are there tests near the behavior?
-* What hidden complexity may exist?
-* Does the issue underestimate the work?
-* Would the contributor need special hardware/accounts/services?
-* Is the maintainer's proposed approach compatible with current architecture?
+# Step 7 — Feasibility Reconnaissance
+
+Do not highly rank an issue from discussion alone.
+
+Inspect enough code to determine:
+
+* likely subsystem,
+* likely files/modules,
+* current execution path,
+* whether the apparent fix is local or architectural,
+* nearby tests,
+* hidden complexity,
+* special infrastructure requirements,
+* likely review concerns.
 
 Do not implement the issue.
 
-This is reconnaissance only.
+This step is reconnaissance only.
 
-If the real scope cannot be determined, explicitly lower confidence.
+Estimate:
+
+* Onboarding Cost
+* Scope Risk
+* Implementation Shape
+* Confidence
+
+If scope remains unclear, lower confidence and score accordingly.
 
 ---
 
 # Step 8 — Score Each Candidate
 
-Scores are 0–10.
+Use whole numbers or half-points.
 
 Avoid fake precision.
-
-Do not pretend that an 8.63 issue is meaningfully better than an 8.51 issue.
-
-Use whole numbers or half-points where helpful.
-
-For each score give evidence.
 
 ## A. Career Signal — 30%
 
 Ask:
 
-> If this is successfully merged and explained well in an interview, how strong is the engineering story?
+> If this is merged and explained well in an interview, what does it prove?
 
 Consider:
 
 * technical substance,
 * production relevance,
 * architectural depth,
+* generalizability,
 * project credibility,
-* generalizability to professional engineering,
-* whether the work distinguishes the contributor from ordinary student projects.
+* whether it adds evidence not already obvious in the contributor's portfolio.
 
-Do not over-score trivial changes merely because the repository is famous.
+Do not over-score trivial fixes because the repository is famous.
 
-## B. Pull Request Acceptance Probability — 25%
+---
 
-Estimate the chance that a **high-quality implementation** would be merged.
+## B. PR Acceptance Probability — 25%
+
+Estimate the chance that a **high-quality implementation** would merge.
 
 Consider:
 
-* current outside merge history,
+* actual recent external merges,
+* policy,
 * maintainer endorsement,
 * issue ownership,
 * competing PRs,
 * project philosophy,
-* review responsiveness,
 * scope clarity,
+* review responsiveness,
 * testability.
 
-Give a broad percentage range only when useful, such as:
+Give a broad percentage only when useful.
 
-`7/10 — roughly 60–75% if the proposed approach is accepted`
+Example:
 
-State that the percentage is an estimate.
+`7/10 — approximately 60–75% if the proposed approach is accepted`
+
+The percentage is an estimate, not a mathematical probability.
+
+---
 
 ## C. Maintainer Accessibility — 15%
 
@@ -534,98 +689,107 @@ How likely is good work to receive:
 * substantive feedback,
 * discussion,
 * recognition,
-* and eventually contributor trust?
+* contributor trust?
+
+---
 
 ## D. Professional Network Value — 10%
 
-How useful could becoming known in this project's contributor ecosystem be professionally?
+How professionally useful could recognition in this ecosystem become?
 
-Do not infer this purely from repository fame.
+Consider:
+
+* ecosystem importance,
+* maintainer positions,
+* adjacent communities,
+* hiring/referral possibilities,
+* whether repeat contributors actually interact with influential engineers.
+
+Explain this as an inference.
+
+Do not derive it from fame alone.
+
+---
 
 ## E. Technical Depth — 10%
 
 Evaluate actual engineering depth.
 
-Possible high-depth areas include:
+High-depth work may involve:
 
 * compilers/parsers
 * concurrency
 * distributed systems
 * networking
-* protocol design
+* protocol translation
 * streaming
-* platform integration
+* platform protocols
 * terminal internals
 * browser internals
 * rendering
 * performance
 * state synchronization
 * authentication
-* complex compatibility work
+* difficult compatibility behavior
 
-A large diff is not automatically deep.
-
-## F. Personal Advantage — 5%
-
-This replaces broad "Personal Fit."
-
-Score only the contributor's **special advantage** relative to another capable engineer:
-
-* they actively use the software;
-* they understand the failure mode firsthand;
-* they know adjacent technologies;
-* they previously built something similar;
-* they already know the ecosystem.
-
-Do not heavily reward mere language familiarity.
-
-The contributor can learn.
-
-## G. New-Contributor Friendliness — 5%
-
-Measure substantive new-contributor acceptance using recent evidence.
-
-Distinguish:
-
-* tiny drive-by fixes
-  from
-* meaningful code contributions.
+Large diff size does not imply depth.
 
 ---
 
-# Additional Non-Weighted Metrics
+## F. Personal Advantage — 5%
 
-Record separately:
+Score only special contributor-specific leverage.
+
+Examples:
+
+* has reproduced the issue,
+* actively uses the exact feature,
+* knows the relevant protocol,
+* built an analogous subsystem,
+* already understands adjacent architecture.
+
+Mere language familiarity should have little weight.
+
+---
+
+## G. New-Contributor Friendliness — 5%
+
+Use recent substantive merge evidence.
+
+Distinguish:
+
+* trivial outside fixes
+  from
+* meaningful first-time contributor work.
+
+---
+
+# Step 9 — Record Non-Weighted Metrics
+
+For every issue include:
 
 ## Competition
 
 0–10
 
 `0 = effectively uncontested`
-`10 = extremely likely to attract duplicate work`
+`10 = duplicate effort is very likely`
 
 ## Onboarding Cost
 
 0–10
 
-Consider:
-
-* codebase size,
-* unfamiliar language,
-* build complexity,
-* architecture,
-* test environment,
-* domain knowledge.
-
 ## Scope Risk
 
 0–10
 
-How likely is the issue to expand far beyond what it initially appears to require?
+## Research Confidence
 
-## Estimated Time to a Meaningful PR
+* High
+* Medium
+* Low
 
-Use broad ranges:
+## Estimated Time to Meaningful PR
 
 * <1 day
 * 1–3 days
@@ -634,266 +798,309 @@ Use broad ranges:
 * 2–4 weeks
 * > 1 month
 
-Assume strong AI coding agents are available, but the contributor must personally understand and review the work.
+Assume strong AI coding agents are available.
 
-Do not treat AI as eliminating:
+Do not assume AI eliminates:
 
-* architecture learning,
-* reproduction work,
-* build setup,
+* codebase learning,
+* reproduction,
+* setup,
 * debugging,
-* review cycles,
-* or maintainer communication.
+* architecture reasoning,
+* testing,
+* maintainer review,
+* iteration.
 
 ---
 
-# Step 9 — Calculate Strategic Value
+# Step 10 — Calculate Strategic Value
 
-Compute a base weighted score from Step 8.
+Use the weighted score as a baseline.
 
-Then apply qualitative adjustments.
+Then apply judgment.
 
 ## Penalize
 
-* extreme competition
-* large scope uncertainty
-* very high onboarding cost without corresponding payoff
-* issue likely to be claimed before implementation
-* unclear maintainer intent
-* trivial work masquerading as high value
-* famous project but weak external review
-* mechanical implementation with little interview value
+* extreme competition,
+* high scope uncertainty,
+* famous repo with poor actual review,
+* large onboarding cost with mediocre payoff,
+* issue likely to be claimed quickly,
+* unclear maintainer intent,
+* trivial implementation disguised as high value,
+* mechanical work with little interview story,
+* contribution that duplicates evidence already obvious from the contributor's portfolio.
 
 ## Boost
 
-* unusually strong engineering story
-* explicit maintainer request for help
-* natural follow-up opportunities
-* credible pathway to repeat contribution
-* issue aligns with contributor's firsthand knowledge
-* contribution demonstrates a capability absent from the contributor's existing portfolio
-* contribution would diversify the contributor's technical evidence
+* unusually strong engineering story,
+* explicit maintainer request,
+* clear pathway to repeat contribution,
+* contribution fills a gap in existing proof-of-work,
+* contributor has genuine firsthand insight,
+* issue can lead naturally to deeper work.
 
-Explain every meaningful manual override.
+Explain meaningful overrides.
 
 ---
 
-# Step 10 — Assign Each Issue a Strategic Role
+# Step 11 — Assign a Strategic Role
 
-Every recommended issue must receive one role.
+Every issue gets exactly one:
 
 ## Fast Credibility Win
 
-Small-to-medium scope, high acceptance probability, useful external validation.
+Small-to-medium scope, strong acceptance odds, real external validation.
 
-This should still be real engineering.
+Still must involve genuine engineering.
 
-Do not recommend multiple trivial wins merely to build activity.
+Do not recommend many of these merely to generate activity.
 
 ## Core Contribution
 
-Strong balance of technical signal, acceptance probability, and review opportunity.
+Strong balance of:
 
-These are usually the highest-value targets.
+* career signal,
+* acceptance,
+* review opportunity,
+* meaningful engineering.
+
+Usually the best immediate targets.
 
 ## Ecosystem Entry
 
-A deliberately bounded first contribution that creates a realistic path toward deeper work in a valuable project.
+A bounded first contribution that creates a realistic path toward deeper work.
 
-The value lies partly in what it enables next.
+The value is partly what comes next.
 
 ## Repeat-Contributor Opportunity
 
-Best when the contributor already has one contribution in the project or when the issue naturally follows earlier work.
+Useful when the contributor has already entered the ecosystem or the issue naturally follows prior work.
 
 ## Technical Stretch
 
-Higher onboarding cost or technical difficulty, but unusually strong career signal.
+Higher onboarding or implementation difficulty but unusually strong signal.
 
 ## Opportunistic High-Upside
 
-Excellent contribution when the contributor naturally finds/reproduces the problem, but poor for proactive issue hunting because of competition or timing.
+Excellent if the contributor personally encounters or understands the issue, but poor for proactive hunting due to competition/timing.
 
-Do not compare all roles as if they serve the same purpose.
+## Invitation-Path Opportunity
+
+Repository does not normally accept unsolicited code.
+
+The recommended contribution is instead:
+
+* reproduction,
+* root-cause analysis,
+* benchmark,
+* design proposal,
+* or other work that may earn an implementation invitation.
+
+Do not present this as a normal PR opportunity.
 
 ---
 
-# Step 11 — Build Contribution Trajectories
+# Step 12 — Build Contribution Trajectories
 
-After ranking individual issues, identify 2–4 plausible trajectories.
+Create 2–4 plausible trajectories.
 
 Examples:
 
-### Trajectory A — Become known in one ecosystem
+## Recognition Lane
 
-1. bounded entry issue
+1. bounded contribution
 2. substantive follow-up
-3. deeper architectural contribution
+3. deeper repeat contribution
+4. recognizable contributor status
 
-### Trajectory B — Technical depth
+## Technical Depth Lane
 
-1. manageable contribution in unfamiliar systems language
-2. harder production issue
-3. major stretch contribution
+1. manageable work in a harder ecosystem
+2. meaningful systems/compiler/platform contribution
+3. strong interview story
 
-### Trajectory C — Opportunistic user advantage
+## Opportunistic Lane
 
-Keep using a crowded project normally.
-When the contributor personally discovers a reproducible bug, investigate and move quickly.
+Continue using a crowded familiar project.
 
-A trajectory is more valuable than three unrelated easy PRs when it creates:
+When the contributor finds a real problem:
 
-* repeat maintainer recognition,
-* coherent technical identity,
-* or increasing engineering depth.
+1. reproduce quickly,
+2. inspect upstream,
+3. check for competing work,
+4. move only when expected value is high.
 
----
+## Invitation Lane
 
-# Step 12 — Adversarial Audit of the Finalists
+For invitation-only repositories:
 
-Before publishing the final ranking, take the top approximately 8–12 issues and challenge them.
-
-Use a separate subagent when available.
-
-For every finalist ask:
-
-* Is this issue still open?
-* Is it still unclaimed?
-* Did a PR appear during the research?
-* Did someone comment intent to implement it?
-* Is the repository really accepting external code right now?
-* Are recent first-time contributors doing substantive work?
-* Is the expected fix actually as bounded as claimed?
-* Is the career score inflated because the project is famous?
-* Is the network score inflated because the maintainer is famous?
-* Is the issue easy but strategically mediocre?
-* Is the issue technically impressive but so risky that expected value is poor?
-* Is there a better issue in the same repository?
-* Does this duplicate technical evidence already obvious from the contributor's portfolio?
-
-Downgrade candidates when the audit exposes weak assumptions.
-
-This step exists specifically to prevent attractive but shallow rankings.
+1. produce exceptional diagnosis,
+2. engage constructively,
+3. establish credibility,
+4. pursue code only if explicitly invited.
 
 ---
 
-# Step 13 — Write the Report
+# Step 13 — Adversarial Audit the Finalists
 
-Write the factual report content before rendering HTML.
+Before final ranking, use a separate subagent when available.
 
-The report must include six parts.
+Audit approximately the top 8–12 issues.
+
+For every finalist verify again:
+
+* issue is still open;
+* issue is still unclaimed;
+* no new PR appeared;
+* no contributor declared intent;
+* contribution policy remains the same;
+* recent merge behavior still supports the repository classification;
+* policy and observed behavior were reconciled correctly;
+* expected fix is as bounded as claimed;
+* career score is not inflated by repository fame;
+* network score is not inflated by maintainer fame;
+* easy work is not being mistaken for strategic value;
+* hard work is not being romanticized despite terrible acceptance odds;
+* another issue in the same repository is not clearly better;
+* the issue adds evidence not already obvious in the contributor's portfolio.
+
+### Mandatory policy/behavior challenge
+
+For every finalist repository ask:
+
+> If I ignored the CONTRIBUTING wording and looked only at current behavior, what classification would I give?
+
+Then ask:
+
+> If I ignored current behavior and followed the written policy literally, what classification would I give?
+
+If the answers differ, explicitly reconcile them.
+
+This is mandatory.
+
+---
+
+# Step 14 — Write the Report
+
+Write plain factual content before HTML rendering.
+
+Include six sections.
 
 ---
 
 ## Part 1 — Executive Findings
 
-Briefly state:
+State:
 
-* strongest ecosystem for repeated contribution;
-* strongest technical stretch target;
-* strongest high-acceptance meaningful issue;
-* strongest opportunistic project;
-* major repositories that looked attractive but were rejected;
-* the biggest uncertainty in the research.
+* best ecosystem for repeated contribution;
+* best technical stretch target;
+* best meaningful high-acceptance issue;
+* best opportunistic project;
+* best invitation-path project if relevant;
+* major attractive projects that were rejected or downgraded;
+* largest research uncertainty.
 
-Do not merely repeat the numeric ranking.
+Do not merely repeat numeric ranks.
 
 ---
 
 ## Part 2 — Top Contribution Opportunities
 
-Return approximately 6–12 genuinely strong issues.
+Return approximately 6–12 strong issues.
 
-Do not fill the list to an arbitrary count.
+Do not pad to a fixed count.
 
-For every issue include:
+For each include:
 
 ### Project / Issue
 
 **Repository:**
 **Issue URL:**
-**Strategic role:**
-**Overall assessment:** Strong / Very Strong / Exceptional / Conditional
+**Strategic Role:**
+**Overall Assessment:** Strong / Very Strong / Exceptional / Conditional
 
 **Why it matters**
 
-Explain the engineering and career value in 2–4 sentences.
+2–4 sentences.
+
+**What this would prove**
+
+State explicitly what the contribution demonstrates to an employer or maintainer.
 
 **Career Signal:** X/10
-Evidence and interview story.
 
 **Acceptance Probability:** X/10
-Approximate range if justified.
-Evidence.
 
 **Maintainer Accessibility:** X/10
-Evidence.
 
 **Professional Network Value:** X/10
-Evidence.
 
 **Technical Depth:** X/10
-Explain what makes the engineering difficult.
 
 **Personal Advantage:** X/10
-Explain contributor-specific advantage.
 
 **New-Contributor Friendliness:** X/10
-Use recent substantive contribution evidence.
 
 **Competition:** X/10
 **Onboarding Cost:** X/10
 **Scope Risk:** X/10
+**Research Confidence:** High / Medium / Low
 **Estimated Effort:** range
 
-**Likely subsystem/files**
+**Policy vs Behavior**
 
-List likely areas based on reconnaissance.
+* Written policy:
+* Recent observed behavior:
+* Practical conclusion:
 
-**Likely implementation shape**
+**Likely Subsystem / Files**
 
-Give a concise hypothesis.
+**Likely Implementation Shape**
 
-Do not implement it.
+Do not implement.
 
-**What this would prove**
+**Acceptance Evidence**
 
-State explicitly what the merged contribution would demonstrate to an employer or maintainer.
+Use real recent PR and maintainer evidence.
 
 **Risks**
 
 Be candid.
 
-**Next step**
+**Next Step**
 
-Choose one:
+Use one of:
 
 * reproduce locally;
-* inspect specific subsystem;
+* inspect subsystem;
+* comment with approach;
 * ask maintainer before coding;
-* comment with proposed approach;
 * ready to implement;
 * wait for personal reproduction;
-* skip unless circumstances change.
+* produce diagnosis/design first;
+* skip unless conditions change.
 
 ---
 
 ## Part 3 — Best Repositories for Repeated Contribution
 
-Rank approximately 5–10 repositories separately from the issue ranking.
+Rank approximately 5–10 repositories separately from issue ranking.
 
 For each include:
 
-* Recommended role
-* Maintainer accessibility
-* External contribution health
-* Technical reputation potential
-* Professional network potential
+* Recommended Role
+* External Contribution Health
+* Maintainer Accessibility
+* Professional Network Value
+* Technical Reputation Potential
 * Competition
-* Contributor-specific advantage
-* Why repeated work here could or could not compound
+* Onboarding Cost
+* Policy vs Behavior summary
+* Why repeated work could compound
+* Why it might not
 
-Use tags such as:
+Possible tags:
 
 * Best ecosystem to become known in
 * Best technical reputation
@@ -902,8 +1109,9 @@ Use tags such as:
 * High upside / high competition
 * Opportunistic only
 * Best stretch ecosystem
+* Invitation-only but high-value diagnosis path
 
-Do not rank repositories based solely on the best currently open issue.
+Do not rank repositories solely by their best currently open issue.
 
 ---
 
@@ -911,21 +1119,25 @@ Do not rank repositories based solely on the best currently open issue.
 
 Give 2–4 strategic lanes.
 
-Prefer structures such as:
+Prefer:
 
 ### Lane 1 — Recognition
 
-Become a recurring contributor in one ecosystem.
+Become a recurring contributor somewhere maintainers actually notice good work.
 
 ### Lane 2 — Engineering Depth
 
-Target one technically difficult contribution that expands the contributor's demonstrated range.
+Land one contribution that materially expands demonstrated technical range.
 
 ### Lane 3 — Opportunistic
 
-Continue using crowded familiar projects and move quickly only when the contributor personally finds a strong bug.
+Use crowded familiar projects normally and move quickly only on personally understood issues.
 
-Do not recommend accumulating trivial PRs for appearance.
+### Lane 4 — Invitation Path
+
+For closed or invitation-only repositories, contribute diagnosis/design rather than speculative code.
+
+Do not recommend many trivial PRs just to create visible activity.
 
 ---
 
@@ -933,28 +1145,30 @@ Do not recommend accumulating trivial PRs for appearance.
 
 Include rejected and downgraded repositories.
 
-For each give the current reason:
+For each state the current reason:
 
-* effectively closed to outside PRs
-* bot/internal-team dominated
-* huge competition
-* weak maintainer response
-* no good issue currently available
-* poor fit relative to opportunity cost
-* issue pool dominated by trivial work
-* excessive onboarding for weak payoff
-* better treated opportunistically
-* contribution policy requires prior invitation
+* effectively closed to unsolicited code,
+* invitation-only,
+* internal/bot dominated,
+* huge competition,
+* weak maintainer response,
+* no suitable issue currently available,
+* poor opportunity-cost fit,
+* trivial issue pool,
+* excessive onboarding for weak payoff,
+* better treated opportunistically.
 
-Distinguish:
+Distinguish carefully:
 
-`Bad repository for contributing`
+`Bad repository for external contribution`
 
 from:
 
-`Good repository, bad place to proactively hunt today`
+`Good repository, poor place to proactively hunt right now`
 
-This distinction is important.
+from:
+
+`Potentially valuable, but code contribution requires invitation`
 
 ---
 
@@ -964,46 +1178,48 @@ State:
 
 * research date,
 * sample windows,
-* number of recent PRs inspected where relevant,
-* any rate-limit problems,
-* any repositories where evidence was thin,
-* issues whose availability may change quickly.
+* number of recent PRs sampled,
+* thin-evidence repositories,
+* rate-limit problems,
+* issues likely to change ownership quickly,
+* cases where policy and behavior materially disagreed.
 
 Do not hide uncertainty behind precise scores.
 
 ---
 
-# Step 14 — Evidence Rules
+# Step 15 — Evidence Rules
 
 Give a URL for every important external claim.
 
 Use:
 
-* actual issue pages,
-* actual PRs,
-* merge history,
+* issue pages,
+* pull requests,
+* merged PR history,
 * CONTRIBUTING files,
-* maintainer discussions,
+* README policy,
+* maintainer comments,
+* discussions,
 * release notes,
 * GitHub API data.
 
 Do not rely primarily on:
 
-* repository stars,
-* search snippets,
-* generic project descriptions,
-* stale README comments,
-* old contribution policies contradicted by current behavior.
+* stars,
+* generic descriptions,
+* stale snippets,
+* historical contribution policy contradicted by current behavior.
 
-For first-time contributor friendliness, inspect recent merges rather than guessing.
+For first-time contributor friendliness, inspect actual recent substantive merges.
 
-For maintainer responsiveness, sample actual review timelines.
+For maintainer responsiveness, inspect actual review timelines.
 
-For professional network value, explain the inference instead of presenting it as objective fact.
+For professional network value, clearly label inference.
 
 ---
 
-# Step 15 — Render and Publish
+# Step 16 — Render and Publish
 
 Load the `html-communication` skill.
 
@@ -1014,33 +1230,39 @@ The HTML subagent must not:
 * change scores,
 * change ranking,
 * invent evidence,
+* reinterpret policies,
 * add unsupported claims,
-* or re-evaluate repositories.
+* or redo repository analysis.
 
-Its job is presentation only.
+Its task is presentation only.
 
-Follow the `html-communication` skill for design and publishing.
+Follow the `html-communication` skill.
 
 Upload to Postplan.
 
-Return the Postplan URL to the user.
+Return the Postplan URL.
 
 ---
 
 # Final Quality Test
 
-Before finishing, ask:
+Before publishing, verify:
 
-1. Did we accidentally reward easy merges over meaningful engineering?
-2. Did we overrate a famous repository or maintainer?
-3. Did we confuse maintainer accessibility with professional network value?
-4. Did we mistake language familiarity for career value?
-5. Did we recommend small PRs merely to create visible activity?
-6. Did we distinguish proactive targets from opportunistic projects?
-7. Did we inspect code enough to challenge the apparent scope?
-8. Did we check whether every recommended issue is still available?
-9. Does each high-ranked issue add something meaningful to the contributor's existing proof of work?
-10. Is there a coherent path from these contributions to external recognition or employment?
+1. Did we reward easy merges over meaningful engineering?
+2. Did we overrate a famous repository?
+3. Did we overrate a famous maintainer?
+4. Did we confuse maintainer accessibility with professional network value?
+5. Did we mistake stack familiarity for meaningful personal advantage?
+6. Did we recommend tiny PRs merely to generate visible activity?
+7. Did we distinguish proactive targets from opportunistic projects?
+8. Did we distinguish normal PR targets from invitation-only repositories?
+9. Did we inspect enough code to challenge issue scope?
+10. Is every recommended issue still open and genuinely available?
+11. Does each high-ranked issue add useful evidence beyond the contributor's current portfolio?
+12. Did we explicitly reconcile written contribution policy with current repository behavior?
+13. Did we avoid rejecting an active external-contributor project because of stale restrictive wording?
+14. Did we avoid recommending unsolicited code to a repository whose current policy explicitly forbids it?
+15. Is there a coherent route from these contributions to external recognition, stronger interviews, or employment?
 
-If the answer to any of these is no, revise the report before publishing.
+If any answer is no, revise the report before publishing.
 
