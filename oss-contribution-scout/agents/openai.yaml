@@ -1,0 +1,5 @@
+interface:
+  display_name: "OSS Contribution Scout"
+  short_description: "Scout issues for OSS Contribution"
+policy:
+  allow_implicit_invocation: false

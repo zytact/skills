@@ -70,6 +70,8 @@ Do not use these as evidence of failure:
 
 Give each subagent a first-output budget before you judge it. Measure from the spawn, and count any tool call as output:
 
+Add 5 minutes for a ticket that introduces a new package, schema, or shared module.
+
 Interrupt a subagent only when one of these is true:
 
 - No agent activity at all for the budget above.
