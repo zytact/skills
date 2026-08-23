@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review changes since a fixed point such as a commit, branch, tag, or merge-base along two separate axes. Standards checks whether the code follows the repo's documented coding standards. Spec checks whether the code matches the originating issue or spec. Run both reviews in parallel sub-agents and report them separately. Use when the user wants to review a branch, PR, work-in-progress changes, or asks to "review since X".
+description: Review changes since a fixed point such as a commit, branch, tag, or merge-base along two separate axes. Standards checks whether the code follows the repo's documented coding standards. Spec checks whether the code matches the originating issue or spec. Run both reviews in parallel sub-agents, verify every finding with adversarial verifier sub-agents, and report the axes separately. Use when the user wants to review a branch, PR, work-in-progress changes, or asks to "review since X".
 ---
 
 Review the diff between `HEAD` and a fixed point supplied by the user along two axes:
@@ -8,9 +8,8 @@ Review the diff between `HEAD` and a fixed point supplied by the user along two 
 - **Standards** checks whether the code follows the repo's documented coding standards.
 - **Spec** checks whether the code implements what the originating issue or spec asked for.
 
-Run the two reviews in parallel sub-agents so their reasoning stays independent. Aggregate the results without merging or reranking them.
+Run the two reviews in parallel sub-agents so their reasoning stays independent. Treat their findings as claims: verify each one with a clean-context verifier sub-agent, then aggregate the surviving results without merging or reranking them.
 
-The issue tracker should already be configured. If `docs/agents/issue-tracker.md` is missing, run `/setup-matt-pocock-skills`.
 
 ## Process
 
@@ -132,7 +131,39 @@ Use this brief:
 
 If no spec exists, do not spawn this sub-agent.
 
-### 5. Aggregate
+### 5. Verify every finding
+
+A finding is a claim until a verifier grounds it. Confident falsehoods survive finders and parents alike, because both are anchored by the reasoning that produced them. Verification works only from a clean context with a refute mandate.
+
+Split each finder report into individual claims. Spawn one verifier sub-agent per claim, in parallel. Give each verifier:
+
+- The bare claim: one sentence plus the file and line it is about.
+- The diff command and repo access.
+- Nothing else. The finder's reasoning, quotes, and severity stay behind: a verifier that reads the argument inherits its frame and nods along.
+
+Use this brief:
+
+> Try to refute this claim about the repo or diff. Return exactly one verdict:
+>
+> - `confirmed`, with the evidence.
+> - `refuted`, with the evidence.
+> - `ungrounded`, if you can neither confirm nor refute from the repo.
+>
+> Evidence means tool output: a command result or quoted file lines. Your judgement alone grades as `ungrounded`.
+
+Route each claim to the cheapest sufficient proof:
+
+- **Mechanical claims** (line length, naming, a file, API, flag, or option existing): the verifier runs the measuring command. Its output is the verdict; attestation without output grades as `ungrounded`.
+- **Semantic claims** (duplication, incorrect behavior, missing requirement): the verifier reads every code path the claim touches, end to end, in the working tree, not the diff hunks alone.
+- **Directives** (any claim whose fix says remove X or change X to Y): verify the consequence, not the statement. The proposition to test is "the change still behaves correctly with the directive applied". Trace what the targeted code does at runtime before endorsing its removal.
+
+**Spec conflicts resolve against runtime truth.** When the diff does something the spec forbids, the spec may be the wrong side. Verify which side matches actual behavior — code paths, call ordering, defaults — and report the conflict itself with that evidence. A directive to make the diff match the spec is only valid once runtime truth sides with the spec.
+
+Baseline smells keep their heuristic label; verify only that the quoted code exists as described.
+
+This step is done when every claim carries exactly one verdict with its evidence.
+
+### 6. Aggregate
 
 Present the reports under these headings:
 
@@ -146,15 +177,19 @@ Present the reports under these headings:
 ...
 ```
 
-Keep each report verbatim or make only minor cleanup edits.
+Report `confirmed` findings under their axis, each with its verifier's evidence. Keep the finder's wording verbatim or make only minor cleanup edits.
+
+List `ungrounded` findings in their own short subsection per axis, stated as open questions for the human, with what the verifier could not establish.
+
+Compress `refuted` claims to one line per axis naming what was dropped and why, so the human sees what died in verification.
 
 Do not merge findings from the two axes. Do not rerank them against each other.
 
 Finish with one line containing:
 
-- The number of findings on each axis.
-- The worst Standards finding, if there is one.
-- The worst Spec finding, if there is one.
+- The number of confirmed findings on each axis.
+- The worst confirmed Standards finding, if there is one.
+- The worst confirmed Spec finding, if there is one.
 
 Do not choose one overall worst finding.
 
@@ -167,4 +202,7 @@ Code may follow every project standard while implementing the wrong behavior. Th
 Code may implement the requested behavior correctly while breaking the project's conventions. That is a Spec pass and a Standards fail.
 
 Keeping the reports separate prevents one kind of correctness from hiding problems in the other.
-```
+
+## Why a verifier lane
+
+Finders are tuned for recall and state plausible falsehoods with full confidence. The parent cannot catch these: it assembled the findings into a narrative and checks them inside that frame. A clean-context verifier holding only the bare claim has no stake in it being true, which is the property that makes refutation possible. Verification raises precision toward its ceiling; recall stays whatever the finders achieve, so verification never substitutes for a second finder lens.
