@@ -48,6 +48,7 @@ Each listing carries:
 - `locationConflict: { tagged, claimed }` when LinkedIn tags a role Remote but the body demands attendance. Never filtered, only surfaced. Always mention it.
 
 `unstated` means the listing says nothing about pay. It is not a negative signal and is never filtered. Plenty of good roles omit pay.
+Never just trust the tags. They may be mislabeled. So read the job description too.
 
 ## Judging fit
 
