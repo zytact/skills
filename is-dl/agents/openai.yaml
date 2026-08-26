@@ -1,0 +1,5 @@
+interface:
+  display_name: "is-dl"
+  short_description: "Find internships and build a tailored resume"
+policy:
+  allow_implicit_invocation: false
