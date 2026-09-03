@@ -1,12 +1,12 @@
 ---
 name: is-dl
-description: Drive the is-dl CLI to scrape LinkedIn and Unstop listings, filter out unpaid roles and ones already applied to or already shown, judge fit by reading descriptions, and build a tailored one-page resume PDF. Use when asked to find jobs or internships, triage scraped listings, log an application, or build a resume variant.
+description: Drive the is-dl CLI to scrape LinkedIn and Unstop listings, filter out unpaid roles and ones already applied to or already shown, judge fit by reading descriptions, keep the documents and notes attached to a job, and build a tailored one-page resume PDF. Use when asked to find jobs or internships, triage scraped listings, save a hiring doc or note about a role, log an application, or build a resume variant.
 disable-model-invocation: true
 ---
 
 # is-dl
 
-`is-dl` searches LinkedIn and Unstop, filters listings on facts, tracks what has been applied to, and builds tailored resume PDFs. It never submits an application. Search, filter, log, build a PDF. A human presses send.
+`is-dl` searches LinkedIn and Unstop, filters listings on facts, tracks what has been applied to, keeps the text attached to a job, and builds tailored resume PDFs. It never submits an application. Search, filter, log, build a PDF. A human presses send.
 
 Every command takes `--json`, which puts one JSON document on stdout and all logs on stderr. Always pass it. Parse stdout only.
 
@@ -137,7 +137,52 @@ Log an application immediately after the human confirms they sent it, never befo
 
 `apps status` and `apps show` take `--source` when one id exists on both boards.
 
-`apps list --older-than 10d --status applied` answers "who should I follow up with".
+`apps list --older-than 10d --status applied` answers "who should I follow up with". Read that job's notes before drafting the follow-up; the process and the names are usually in there.
+
+
+## Notes
+
+A listing is rarely the whole story. The compensation band and the interview rounds usually arrive as a Google Doc or a recruiter's email, and none of that survives in the run file. `notes` keeps that text.
+
+```bash
+is-dl notes add <jobId> --title "Hiring process" --url <where the text came from> --json
+is-dl notes attach <jobId> --file <path> [--as <name>] --json
+is-dl notes list [<jobId>] --json
+is-dl notes show <jobId> [--note <noteId>] --json
+is-dl notes path <jobId> [--note <noteId>] --json
+is-dl notes rm <jobId> --note <noteId> --json
+```
+
+The text comes from `--text`, `--file <path>`, or stdin. Stdin is the one to reach for, since it survives quoting and newlines that `--text` mangles.
+
+```bash
+is-dl notes add 4055 --title "Comp and process" --url https://docs.google.com/... --json <<'NOTE'
+Stipend 40k/month, 6 months, extendable.
+Three rounds: DSA screen, system design, culture.
+NOTE
+```
+
+**Save the text, not a link to it.** A URL in `--url` records where it came from, and a link alone is worthless later, once the doc is locked, moved or revoked. Paste the content.
+
+**Copy it verbatim.** A note is evidence, so never summarize a doc into a note and never write a tidier version of what a recruiter said. is-dl stores the body byte for byte, indentation and blank lines included, so what you pipe in is what comes back out. If your own reading is worth keeping, add it as a second note titled as yours.
+
+`notes attach` is for anything that is not text. It copies the bytes unchanged, so a PDF brief, a docx take-home or a screenshot keeps its original form and name. Reach for it when the document only makes sense as a file; use `notes add` when the words are the point, since only note bodies come back through `notes show`.
+
+`notes add` reads the board from the run that surfaced the job, so anything from a search needs no `--source`. A job id from outside is-dl needs `--source linkedin` or `--source unstop`, otherwise the note has nowhere to live.
+
+Notes are independent of the application log, which is deliberate. Note a role while deciding, before there is anything to log. `apps show <jobId>` lists what a job has, and `notes show` prints the bodies.
+
+Each note is a markdown file under `notes/<source>/<jobId>/` in the data dir, so a human can grep and edit them outside is-dl. `notes path` prints the file, which is what to hand `$EDITOR`. Never write into that directory directly when a command will do it.
+
+### When to write one
+
+Save a note when the human hands you text about a role, or asks for one. That covers a pasted hiring doc, a recruiter email they forwarded, a page you fetched for them, and their own verdict on a role.
+
+Do not write notes on your own initiative for every shortlisted job. Nothing downstream needs them, and a note nobody asked for is one more thing to read.
+
+When the human gives you material the listing does not carry, offer to save it and say what you would title it. That usually means terms from a linked doc, so pay, duration, bond, equity or location, and the interview process, take-home brief or deadline.
+
+Save it while the text is in front of you. Reconstructing it later is guesswork.
 
 ## Resume
 
@@ -177,9 +222,10 @@ If a listing wants something the resume cannot honestly claim, say so. Do not fi
 
 1. `is-dl search --profile <name> --exclude-unpaid --exclude-applied --exclude-seen --json`
 2. Check `meta.sources[]`, then read the descriptions, shortlist with reasons, flag conflicts and pay kinds.
-3. `is-dl resume build --variant <ai|research|fullstack>` for the ones worth applying to.
-4. The human applies.
-5. `is-dl apps add <jobId> --variant <name>`.
+3. `is-dl notes add <jobId>` when the human hands over a hiring doc, brief or thread, and `is-dl notes attach` when it is a file.
+4. `is-dl resume build --variant <ai|research|fullstack>` for the ones worth applying to.
+5. The human applies.
+6. `is-dl apps add <jobId> --variant <name>`.
 
 ## Setup, for a fresh machine
 
