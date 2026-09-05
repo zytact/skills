@@ -1,0 +1,5 @@
+interface:
+  display_name: "Right Hand"
+  short_description: "Steer subagents and own the merge"
+policy:
+  allow_implicit_invocation: false
