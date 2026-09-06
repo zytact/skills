@@ -1,0 +1,5 @@
+interface:
+  display_name: "Deputy"
+  short_description: "Steer subagents, escalate the hard calls, own the merge"
+policy:
+  allow_implicit_invocation: false
