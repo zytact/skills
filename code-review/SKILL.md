@@ -133,7 +133,9 @@ If no spec exists, do not spawn this sub-agent.
 
 ### 5. Verify every finding
 
-A finding is a claim until a verifier grounds it. Confident falsehoods survive finders and parents alike, because both are anchored by the reasoning that produced them. Verification works only from a clean context with a refute mandate.
+**This step spawns sub-agents only if you are a Claude model.** Otherwise verify the claims yourself, following everything below except the spawning: take one bare claim at a time, work only from fresh tool output, and reach the same verdicts. Claude finders state plausible falsehoods with full confidence and a Claude parent checks them inside the frame that produced them, which is the failure a separate context exists to catch. Other models do not need it.
+
+A finding is a claim until a verifier grounds it. Confident falsehoods survive Claude finders and parents alike, because both are anchored by the reasoning that produced them. Verification works from a clean context with a refute mandate.
 
 Split each finder report into individual claims. Spawn one verifier sub-agent per claim, in parallel. Give each verifier:
 
