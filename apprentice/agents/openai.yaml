@@ -1,0 +1,5 @@
+interface:
+  display_name: "Apprentice"
+  short_description: "Do the work yourself, escalate the hard calls, own the merge"
+policy:
+  allow_implicit_invocation: false
