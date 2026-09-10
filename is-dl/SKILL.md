@@ -149,6 +149,7 @@ is-dl notes add <jobId> --title "Hiring process" --url <where the text came from
 is-dl notes attach <jobId> --file <path> [--as <name>] --json
 is-dl notes list [<jobId>] --json
 is-dl notes show <jobId> [--note <noteId>] --json
+is-dl notes edit <jobId> [--note <noteId>] [--title <text>] --json
 is-dl notes path <jobId> [--note <noteId>] --json
 is-dl notes rm <jobId> --note <noteId> --json
 ```
@@ -165,6 +166,18 @@ NOTE
 **Save the text, not a link to it.** A URL in `--url` records where it came from, and a link alone is worthless later, once the doc is locked, moved or revoked. Paste the content.
 
 **Copy it verbatim.** A note is evidence, so never summarize a doc into a note and never write a tidier version of what a recruiter said. is-dl stores the body byte for byte, indentation and blank lines included, so what you pipe in is what comes back out. If your own reading is worth keeping, add it as a second note titled as yours.
+
+`notes edit` replaces the body of a note that is already saved. It takes the new text the same three ways `add` does, so pipe it in on stdin. **Never call it without `--text`, `--file` or stdin.** With none of them it opens `$EDITOR` and blocks until a human closes it, which hangs an agent run.
+
+`--title` rewrites the front matter only. The file name is the note's identity, so the path stays put. A job with one note needs no `--note`.
+
+```bash
+is-dl notes edit 4055 --title "Comp, after the call" --json <<'NOTE'
+Stipend 45k/month after the call, 6 months, extendable.
+NOTE
+```
+
+Editing is for correcting a note you saved wrong, so a truncated paste or a wrong title. It is not for updating a note as a process moves along. New information from a later email or call is a new note, since the old text is still evidence of what was said then.
 
 `notes attach` is for anything that is not text. It copies the bytes unchanged, so a PDF brief, a docx take-home or a screenshot keeps its original form and name. Reach for it when the document only makes sense as a file; use `notes add` when the words are the point, since only note bodies come back through `notes show`.
 
