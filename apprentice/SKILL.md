@@ -20,7 +20,7 @@ Work one unit at a time. Finish it, read your own diff, validate, commit, then s
 
 The superior model is named when this skill is invoked. If no model was named, ask for one before you start. Do not pick one yourself.
 
-Consult it by spawning a subagent on that model. It reads, it judges, it rules. It does not write code or run Git. That work stays yours.
+Consult it by spawning a subagent on that model. It reads, it judges, it rules. It does not write code or run Git. That work stays yours. The same model runs the reviewers and verifiers the `code-review` skill spawns.
 
 Three consultations are fixed: the plan before you write a line, any design call you cannot settle, and ship approval before the PR opens. Everything else you decide alone.
 
@@ -108,11 +108,11 @@ Pause for the user only on requirements they alone can settle, or something only
 
 ## Landing it
 
-The `code-review` skill spawns its own reviewers and verifiers. Run it yourself, exactly as it says, rather than wrapping it in another agent.
+The `code-review` skill spawns its own reviewers and verifiers. Run it yourself, exactly as it says, rather than wrapping it in another agent. Spawn every reviewer and verifier it calls for on the superior model, not on yours. Judging finished code is one of the calls above your pay grade.
 
 1. Run the full validation suite and `git diff --check`.
 2. Confirm every unit is done and each has one commit holding only its own work.
-3. Run the `code-review` skill against the branch's fixed point, giving it the base ref, the spec or issue sources, and the standards sources. It runs its reviewers and verifiers itself.
+3. Run the `code-review` skill against the branch's fixed point, giving it the base ref, the spec or issue sources, and the standards sources. It runs its reviewers and verifiers itself; put them on the superior model.
 4. Check each finding against the code yourself, fix the confirmed defects, then rerun validation and commit the fixes. Escalate a finding only when you believe it is wrong.
 5. Read and obey the project's verification skill, and drive the app the way a user would. Tests passing is not the same as the feature working. Capture the evidence it asks for, fix what fails, and re-drive the fix.
 6. Ask the superior for ship approval. Give it the full branch diff, the unit list against the approved plan, the validation output, the review findings and how each was resolved, and the verification evidence. If it withholds approval, take the work it names back through implementation and return with the fix. Do not open the PR without approval.
