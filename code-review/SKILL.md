@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review changes since a fixed point such as a commit, branch, tag, or merge-base along two separate axes. Standards checks whether the code follows the repo's documented coding standards. Spec checks whether the code matches the originating issue or spec. Run both reviews in parallel sub-agents, verify every finding with adversarial verifier sub-agents, and report the axes separately. Use when the user wants to review a branch, PR, work-in-progress changes, or asks to "review since X".
+description: Review changes since a fixed point such as a commit, branch, tag, or merge-base along two separate axes. Standards checks whether the code follows the repo's documented coding standards. Spec checks whether the code matches the originating issue or spec. Run one finder sub-agent for both axes, verify every finding with adversarial verifier sub-agents, and report the axes separately. Use when the user wants to review a branch, PR, work-in-progress changes, or asks to "review since X".
 ---
 
 Review the diff between `HEAD` and a fixed point supplied by the user along two axes:
@@ -8,7 +8,7 @@ Review the diff between `HEAD` and a fixed point supplied by the user along two 
 - **Standards** checks whether the code follows the repo's documented coding standards.
 - **Spec** checks whether the code implements what the originating issue or spec asked for.
 
-Run the two reviews in parallel sub-agents so their reasoning stays independent. Treat their findings as claims: verify each one with a clean-context verifier sub-agent, then aggregate the surviving results without merging or reranking them.
+One finder sub-agent reviews both axes in separate passes. Treat its findings as claims: verify each one with a clean-context verifier sub-agent, then aggregate the surviving results without merging or reranking them.
 
 
 ## Process
@@ -49,7 +49,7 @@ Look for the originating spec in this order:
 3. A matching spec under `docs/`, `specs/`, or `.scratch/`, using the branch name or feature as a clue.
 4. If none exists, ask the user where the spec is.
 
-If the user says there is no spec, skip the Spec sub-agent and report `no spec available`.
+If the user says there is no spec, skip the Spec axis and report `no spec available`.
 
 ### 3. Find the standards
 
@@ -79,57 +79,36 @@ Use this baseline against the diff:
 - **Middle Man.** A class or function mostly forwards calls elsewhere. Consider removing it and calling the real target directly.
 - **Refused Bequest.** A subclass or implementation ignores or replaces most inherited behavior. Consider composition instead of inheritance.
 
-### 4. Spawn both sub-agents in parallel
+### 4. Spawn the finder sub-agent
 
-Run the Standards and Spec sub-agents at the same time.
-
-#### Standards sub-agent
-
-Give it:
+Spawn one finder sub-agent that reviews both axes. Give it:
 
 - The full diff command.
 - The commit list.
 - Every standards file found in step 3.
 - The complete smell baseline from step 3. Paste it into the prompt because the sub-agent does not otherwise have access to it.
+- The spec path or fetched spec contents, or `no spec available`.
 
 Use this brief:
 
-> Review the diff against the supplied repo standards and smell baseline.
+> Review the diff along two axes, one full pass each: Standards first, then Spec. Report under `## Standards` and `## Spec` headings.
 >
-> For each relevant file or hunk, report:
+> **Standards.** Review the diff against the supplied repo standards and smell baseline. For each relevant file or hunk, report:
 >
 > 1. Every documented standard the diff violates. Cite the standards file and rule.
 > 2. Any baseline smell you find. Name the smell and quote the relevant hunk.
 >
-> Separate hard violations from judgement calls. A documented standards breach may be a hard violation. Baseline smells are always judgement calls. Repo standards override the smell baseline.
+> Separate hard violations from judgement calls. A documented standards breach may be a hard violation. Baseline smells are always judgement calls. Repo standards override the smell baseline. Skip anything existing tooling already enforces.
 >
-> Skip anything existing tooling already enforces.
->
-> Stay under 400 words.
-
-#### Spec sub-agent
-
-Give it:
-
-- The full diff command.
-- The commit list.
-- The spec path or fetched spec contents.
-
-Use this brief:
-
-> Review the diff against the supplied spec.
->
-> Report:
+> **Spec.** Review the diff against the supplied spec. Report:
 >
 > 1. Requirements that are missing or only partially implemented.
 > 2. Behavior added by the diff that the spec did not request.
 > 3. Requirements that appear implemented but whose implementation looks incorrect.
 >
-> Quote the relevant spec line for every finding.
+> Quote the relevant spec line for every finding. If no spec is available, write `no spec available` under the heading.
 >
-> Stay under 400 words.
-
-If no spec exists, do not spawn this sub-agent.
+> Stay under 400 words per axis.
 
 ### 5. Verify every finding
 
@@ -137,7 +116,7 @@ If no spec exists, do not spawn this sub-agent.
 
 A finding is a claim until a verifier grounds it. Confident falsehoods survive Claude finders and parents alike, because both are anchored by the reasoning that produced them. Verification works from a clean context with a refute mandate.
 
-Split each finder report into individual claims. Spawn one verifier sub-agent per claim, in parallel. Give each verifier:
+Split the finder report into individual claims. Spawn one verifier sub-agent per claim, in parallel. Give each verifier:
 
 - The bare claim: one sentence plus the file and line it is about.
 - The diff command and repo access.
@@ -207,4 +186,4 @@ Keeping the reports separate prevents one kind of correctness from hiding proble
 
 ## Why a verifier lane
 
-Finders are tuned for recall and state plausible falsehoods with full confidence. The parent cannot catch these: it assembled the findings into a narrative and checks them inside that frame. A clean-context verifier holding only the bare claim has no stake in it being true, which is the property that makes refutation possible. Verification raises precision toward its ceiling; recall stays whatever the finders achieve, so verification never substitutes for a second finder lens.
+Finders are tuned for recall and state plausible falsehoods with full confidence. The parent cannot catch these: it assembled the findings into a narrative and checks them inside that frame. A clean-context verifier holding only the bare claim has no stake in it being true, which is the property that makes refutation possible. Verification raises precision toward its ceiling; recall stays whatever the finder achieves, so verification never substitutes for a second finder lens.
