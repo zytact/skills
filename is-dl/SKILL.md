@@ -208,6 +208,8 @@ is-dl resume check                # page count and text extraction, every varian
 
 Inputs live in the config dir under `resume/`, outputs in the data dir under `resume/build/`. Both resolve per platform. Never hardcode either; call `resume path`.
 
+Each variant builds to `<output>/<variant>/resume.pdf`, the file the human uploads, so point them at that folder. A build that fails leaves the last good `resume.pdf` in place. Variant names are folder names: letters, digits, `.`, `_` and `-` only, and never two that differ only by case.
+
 Two files matter:
 
 - `resume.yaml` is the superset of facts. Every bullet has an `id`.
