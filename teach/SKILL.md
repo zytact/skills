@@ -146,6 +146,10 @@ Some learning topics lend themselves to reference:
 
 Glossaries, in particular, are an essential reference. Once one is created, it should be adhered to in every lesson. Use the format in [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md).
 
+## Deploying
+
+When the user asks to deploy or publish the vaults online, follow [playbooks/DEPLOY.md](./playbooks/DEPLOY.md).
+
 ## `NOTES.md`
 
 The user will sometimes express preferences of how they want to be taught, or things you should keep in mind. This is the place to record those preferences, so you can refer back to them when designing lessons or working with the user.

@@ -1,0 +1,49 @@
+diff --git a/quartz.config.ts b/quartz.config.ts
+index b3db3d6..c2633fa 100644
+--- a/quartz.config.ts
++++ b/quartz.config.ts
+@@ -8,16 +8,14 @@ import * as Plugin from "./quartz/plugins"
+  */
+ const config: QuartzConfig = {
+   configuration: {
+-    pageTitle: "Quartz 4",
++    pageTitle: process.env.QUARTZ_PAGE_TITLE ?? "teach",
+     pageTitleSuffix: "",
+     enableSPA: true,
+     enablePopovers: true,
+-    analytics: {
+-      provider: "plausible",
+-    },
++    analytics: null,
+     locale: "en-US",
+-    baseUrl: "quartz.jzhao.xyz",
+-    ignorePatterns: ["private", "templates", ".obsidian"],
++    baseUrl: process.env.QUARTZ_BASE_URL ?? "teach.zytact.com",
++    ignorePatterns: ["private", "templates", ".obsidian", "exercises"],
+     defaultDateType: "modified",
+     theme: {
+       fontOrigin: "googleFonts",
+diff --git a/quartz.layout.ts b/quartz.layout.ts
+index 970a5be..a080096 100644
+--- a/quartz.layout.ts
++++ b/quartz.layout.ts
+@@ -7,10 +7,7 @@ export const sharedPageComponents: SharedLayout = {
+   header: [],
+   afterBody: [],
+   footer: Component.Footer({
+-    links: {
+-      GitHub: "https://github.com/jackyzha0/quartz",
+-      "Discord Community": "https://discord.gg/cRFFHYye7t",
+-    },
++    links: {},
+   }),
+ }
+ 
+@@ -21,7 +18,6 @@ export const defaultContentPageLayout: PageLayout = {
+       component: Component.Breadcrumbs(),
+       condition: (page) => page.fileData.slug !== "index",
+     }),
+-    Component.ArticleTitle(),
+     Component.ContentMeta(),
+     Component.TagList(),
+   ],
