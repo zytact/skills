@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Builds every Obsidian vault under $TEACH_HOME and deploys them together to https://teach.zytact.com/<slug>/.
-# Usage: [TEACH_HOME=<dir>] publish.sh [extra wrangler deploy args, e.g. --dry-run]
+# Builds every Obsidian vault in $TEACH_HOME and deploys them together to https://teach.zytact.com/<slug>/.
+# Usage: publish.sh [extra wrangler deploy args, e.g. --dry-run]
 set -euo pipefail
 
 DOMAIN=teach.zytact.com
 QUARTZ_TAG=v4.5.2
 
 here=$(cd "$(dirname "$0")" && pwd)
-home=$(cd "${TEACH_HOME:-$HOME/Documents/learning}" && pwd)
+home=$(cd "${TEACH_HOME:?TEACH_HOME is not set}" && pwd)
 site=$home/.site
 
 if [[ ! -d $site ]]; then
@@ -25,13 +25,12 @@ while IFS= read -r -d '' mission; do
   title=$(sed -n 's/^# //p' "$vault/INDEX.md" | head -n 1)
   title=${title:-$slug}
   out=$site/dist/$slug
-  [[ ! -e $out ]] || { echo "two vaults are named $slug, rename one" >&2; exit 1; }
 
   (cd "$site" && QUARTZ_BASE_URL="$DOMAIN/$slug" QUARTZ_PAGE_TITLE="$title" npx quartz build -d "$vault" -o "$out" < /dev/null)
   if [[ -d $vault/exercises ]]; then cp -r "$vault/exercises" "$out/"; fi
   echo '<!doctype html><meta http-equiv="refresh" content="0; url=./INDEX">' > "$out/index.html"
   links+="<li><a href=\"/$slug/\">$title</a></li>"
-done < <(find "$home" -mindepth 2 -maxdepth 4 -path "$site" -prune -o -name MISSION.md -print0 | sort -z)
+done < <(find "$home" -mindepth 2 -maxdepth 2 -name MISSION.md -print0 | sort -z)
 
 [[ -n $links ]] || { echo "no Obsidian vaults found in $home" >&2; exit 1; }
 
