@@ -18,7 +18,7 @@ index b3db3d6..c2633fa 100644
      locale: "en-US",
 -    baseUrl: "quartz.jzhao.xyz",
 -    ignorePatterns: ["private", "templates", ".obsidian"],
-+    baseUrl: process.env.QUARTZ_BASE_URL ?? "teach.zytact.com",
++    baseUrl: process.env.QUARTZ_BASE_URL,
 +    ignorePatterns: ["private", "templates", ".obsidian", "exercises"],
      defaultDateType: "modified",
      theme: {

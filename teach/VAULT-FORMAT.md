@@ -38,7 +38,7 @@ Create the vault yourself on the first session:
 }
 ```
 
-5. Tell the user to open the directory in Obsidian with **Open folder as vault**, once.
+5. Tell the user to open the directory in Obsidian with **Open folder as vault**, once. If they don't have Obsidian yet, point them to https://obsidian.md/download first.
 
 `alwaysUpdateLinks` matters: it means renaming a note rewrites every link to it, so the vault does not rot as lesson titles change.
 

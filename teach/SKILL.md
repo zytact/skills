@@ -15,12 +15,15 @@ Every vault lives directly under the **vault home**, `$TEACH_HOME`, as `$TEACH_H
 
 At the start of a session:
 
-1. Find the vault home. Read `TEACH_HOME` from the environment, or from the shell files below if the current shell predates it. If neither has it, this is the user's first session: ask where to keep their vaults, suggesting `~/Documents/learning`. Tell the user you are adding `TEACH_HOME` to their shell config, then append it to each of these files that already exists, creating none:
-   - `~/.bashrc` and `~/.zshenv`: `export TEACH_HOME="<path>"`
-   - `~/.config/fish/config.fish`: `set -gx TEACH_HOME "<path>"`
-
-   Create the vault home directory, and use its path directly for the rest of the session, since the shell change only reaches new shells.
+1. Find the vault home. Read `TEACH_HOME` from the environment, or from the shell files below if the current shell predates it. If neither has it, this is the user's first session: ask where to keep their vaults, suggesting `~/Documents/learning`, **persist** it, and create the directory.
 2. Pick the vault. If a directory in the vault home matches what the user asked for, work in it. Otherwise create `$TEACH_HOME/<dash-case-topic>/`, set up as described in [VAULT-FORMAT.md](./VAULT-FORMAT.md).
+
+To **persist** a variable, tell the user you are adding it to their shell config, then append it to each of these files that already exists, creating none:
+
+- `~/.bashrc` and `~/.zshenv`: `export NAME="<value>"`
+- `~/.config/fish/config.fish`: `set -gx NAME "<value>"`
+
+Use the value directly for the rest of the session, since the change only reaches new shells.
 
 The one exception is a vault the user owns and explicitly points you at: it has `.obsidian/` but no `MISSION.md`. Adopt it where it is, and add the teaching files alongside their notes. Do not reorganise, rename or restyle anything that was already there, and check with the user before changing their `.obsidian/` config. It stays outside the vault home, so deploys leave it out.
 
@@ -74,11 +77,13 @@ Each lesson should recommend a primary source for the user to read or watch. Thi
 
 Each lesson should contain a reminder to ask followup questions to the agent. The agent is their teacher, and can assist with anything that's unclear.
 
-When you finish a lesson, open it for the user:
+When you finish a lesson, open it for the user with their OS's opener: `xdg-open` on Linux, `open` on macOS, `start ""` on Windows.
 
 ```sh
 xdg-open "obsidian://open?vault=<vault-directory-name>&file=lessons/0001-name"
 ```
+
+The link only resolves once the user has opened the vault in Obsidian (step 5 of creating the vault in [VAULT-FORMAT.md](./VAULT-FORMAT.md)). Until they confirm that, give them the lesson's path instead.
 
 ## The Mission
 

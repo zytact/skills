@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Builds every Obsidian vault in $TEACH_HOME and deploys them together to https://teach.zytact.com/<slug>/.
+# Builds every Obsidian vault in $TEACH_HOME and deploys them together to https://$TEACH_DOMAIN/<slug>/.
 # Usage: publish.sh [extra wrangler deploy args, e.g. --dry-run]
 set -euo pipefail
 
-DOMAIN=teach.zytact.com
 QUARTZ_TAG=v4.5.2
 
 here=$(cd "$(dirname "$0")" && pwd)
 home=$(cd "${TEACH_HOME:?TEACH_HOME is not set}" && pwd)
+domain=${TEACH_DOMAIN:?TEACH_DOMAIN is not set}
 site=$home/.site
 
 if [[ ! -d $site ]]; then
@@ -26,7 +26,7 @@ while IFS= read -r -d '' mission; do
   title=${title:-$slug}
   out=$site/dist/$slug
 
-  (cd "$site" && QUARTZ_BASE_URL="$DOMAIN/$slug" QUARTZ_PAGE_TITLE="$title" npx quartz build -d "$vault" -o "$out" < /dev/null)
+  (cd "$site" && QUARTZ_BASE_URL="$domain/$slug" QUARTZ_PAGE_TITLE="$title" npx quartz build -d "$vault" -o "$out" < /dev/null)
   if [[ -d $vault/exercises ]]; then cp -r "$vault/exercises" "$out/"; fi
   echo '<!doctype html><meta http-equiv="refresh" content="0; url=./INDEX">' > "$out/index.html"
   links+="<li><a href=\"/$slug/\">$title</a></li>"
@@ -49,7 +49,7 @@ cat > "$site/wrangler.jsonc" <<EOF
   "name": "teach",
   "compatibility_date": "2026-09-01",
   "assets": { "directory": "./dist", "not_found_handling": "404-page" },
-  "routes": [{ "pattern": "$DOMAIN", "custom_domain": true }]
+  "routes": [{ "pattern": "$domain", "custom_domain": true }]
 }
 EOF
 
