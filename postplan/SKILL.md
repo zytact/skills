@@ -16,6 +16,8 @@ description: Upload one HTML file to Postplan when the user tells you to. Also u
 2. Replace `<plan.html>` with the path of the HTML file.
 3. Give the URL that the command supplies to the user.
 
+To update an uploaded file, edit it and run the same command again. The URL stays the same and the version number goes up. Use `--draft <draft-id>` to update a specific draft. Use `--new` to always make a new draft.
+
 ## Read a file
 
 Use the shell to get the uploaded HTML. Do not use web search. Do not use a browser.
