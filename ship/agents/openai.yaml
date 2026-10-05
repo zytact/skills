@@ -1,0 +1,5 @@
+interface:
+  display_name: "Ship"
+  short_description: "Implement, review, verify and file the PR"
+policy:
+  allow_implicit_invocation: false
