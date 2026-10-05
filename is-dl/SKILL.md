@@ -10,6 +10,8 @@ disable-model-invocation: true
 
 Every command takes `--json`, which puts one JSON document on stdout and all logs on stderr. Always pass it. Parse stdout only.
 
+`is-dl --help` lists every command and flag, and it is current for the installed version. Read it for syntax. This skill covers what the help cannot: what the output means and when to act on it.
+
 ## Exit codes
 
 | Code | Meaning | What to do |
@@ -77,13 +79,7 @@ Three filters, three different questions:
 
 `--exclude-seen` is the one to reach for when re-running a search you have run before. Without it, run five of the same query returns mostly the same listings you triaged on run one.
 
-**`--exclude-seen` used to mean what `--exclude-applied` means now.** If you find an older script or note passing `--exclude-seen` to skip applied roles, it is asking for the wrong flag today.
-
-### How --exclude-seen counts
-
-Every saved run adds its jobs to a ledger, whether or not that search filtered on one. The filter runs while the sources page, so `--limit 25` yields 25 jobs you have not been shown rather than 25 rows minus whatever you saw last time. A search that returns fewer than the limit with `--exclude-seen` on has genuinely run out of new listings, not run out of rows.
-
-The ledger only records runs that reach the run store. `-o -` and `--out <dir>` write elsewhere and are never recorded, so a run made that way stays invisible to every future `--exclude-seen`. Use plain `--json` if the run should count.
+With `--exclude-seen` on, a search that returns fewer than `--limit` has run out of new listings, not out of rows. `-o -` and `--out <dir>` bypass the run store, so those runs never count as seen. Use plain `--json` if the run should count.
 
 A job with no id cannot be tracked and will resurface. Reposts get fresh ids and resurface too, which is correct: a repost is a new opportunity.
 
@@ -114,45 +110,19 @@ When reporting, lead with the role, company, pay kind and link. Flag unpaid, tok
 
 ## Past runs
 
-```bash
-is-dl runs list --json
-is-dl runs show latest --json
-is-dl runs rm <runId>
-```
-
 `runs rm` deletes the run file. It does not unrecord that run's jobs, so they stay filtered by `--exclude-seen`. Removing a run to make its listings show up again does not work.
 
 ## Application log
 
 Append-only JSONL. The last record for a job is its current state, keyed by board and id because the two boards hand out colliding numeric ids.
 
-```bash
-is-dl apps add <jobId> --variant ai --from-run latest --json
-is-dl apps status <jobId> rejected --json
-is-dl apps list --status applied --older-than 10d --json
-is-dl apps show <jobId> --json
-```
-
 Log an application immediately after the human confirms they sent it, never before. This is what makes `--exclude-applied` work, so skipping it degrades every future search.
 
-`apps status` and `apps show` take `--source` when one id exists on both boards.
-
 `apps list --older-than 10d --status applied` answers "who should I follow up with". Read that job's notes before drafting the follow-up; the process and the names are usually in there.
-
 
 ## Notes
 
 A listing is rarely the whole story. The compensation band and the interview rounds usually arrive as a Google Doc or a recruiter's email, and none of that survives in the run file. `notes` keeps that text.
-
-```bash
-is-dl notes add <jobId> --title "Hiring process" --url <where the text came from> --json
-is-dl notes attach <jobId> --file <path> [--as <name>] --json
-is-dl notes list [<jobId>] --json
-is-dl notes show <jobId> [--note <noteId>] --json
-is-dl notes edit <jobId> [--note <noteId>] [--title <text>] --json
-is-dl notes path <jobId> [--note <noteId>] --json
-is-dl notes rm <jobId> --note <noteId> --json
-```
 
 The text comes from `--text`, `--file <path>`, or stdin. Stdin is the one to reach for, since it survives quoting and newlines that `--text` mangles.
 
@@ -198,13 +168,6 @@ When the human gives you material the listing does not carry, offer to save it a
 Save it while the text is in front of you. Reconstructing it later is guesswork.
 
 ## Resume
-
-```bash
-is-dl resume path --json          # resolved input and output dirs
-is-dl resume build --variant ai
-is-dl resume build --all
-is-dl resume check                # page count and text extraction, every variant
-```
 
 Inputs live in the config dir under `resume/`, outputs in the data dir under `resume/build/`. Both resolve per platform. Never hardcode either; call `resume path`.
 
