@@ -47,8 +47,19 @@ The thread message starts with `/<skill> <task>` and the skill file's path as a 
 - The other tasks in the queue, and a rebase onto origin's default branch with checks rerun before the final push.
 - `link_pull_request` for the PR, and that task's merge policy.
 
-Done when every task appears in `list_scheduled_tasks` with the right `nextRunAt`.
+## 3. Schedule the check-in
+
+T3 Code resumes threads stopped by a usage limit once the limit resets. The check-in catches the runs where that resume fails, or a thread stops for another reason. Add one more self-deleting schedule, `Night shift check-in`, timed well after the last task should finish. When it fires, bring every task to one of these states:
+
+- Its schedule never fired: follow that schedule's prompt now.
+- Its thread is still running: leave it.
+- Its thread finished: PR open or merged per its merge policy, or a reported blocker.
+- Its thread stopped partway through: one `t3_thread_send` telling it to resume the skill from where it stopped, then confirm it picked the work back up.
+
+Each task keeps exactly one thread. The check-in ends on a table of task, thread state, PR and action taken.
+
+Done when every task and the check-in appear in `list_scheduled_tasks` with the right `nextRunAt`.
 
 ## Report
 
-A table of time, task, branch and merge policy, plus anything the user must keep true while away, such as the machine staying awake.
+A table of time, task, branch and merge policy, the check-in time, plus anything the user must keep true while away, such as the machine staying awake.
