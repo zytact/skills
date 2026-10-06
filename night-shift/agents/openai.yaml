@@ -1,0 +1,5 @@
+interface:
+  display_name: "Night Shift"
+  short_description: "Schedule unattended threads that each run a skill on one task"
+policy:
+  allow_implicit_invocation: false
