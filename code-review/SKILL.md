@@ -111,38 +111,8 @@ Use this brief:
 > Stay under 400 words per axis.
 
 ### 5. Verify every finding
+Do not blindly trust the review. Verify each claim yourself.
 
-**This step spawns sub-agents only if you are a Claude model.** Otherwise verify the claims yourself, following everything below except the spawning: take one bare claim at a time, work only from fresh tool output, and reach the same verdicts. Claude finders state plausible falsehoods with full confidence and a Claude parent checks them inside the frame that produced them, which is the failure a separate context exists to catch. Other models do not need it.
-
-A finding is a claim until a verifier grounds it. Confident falsehoods survive Claude finders and parents alike, because both are anchored by the reasoning that produced them. Verification works from a clean context with a refute mandate.
-
-Split the finder report into individual claims. Spawn one verifier sub-agent per claim, in parallel. Give each verifier:
-
-- The bare claim: one sentence plus the file and line it is about.
-- The diff command and repo access.
-- Nothing else. The finder's reasoning, quotes, and severity stay behind: a verifier that reads the argument inherits its frame and nods along.
-
-Use this brief:
-
-> Try to refute this claim about the repo or diff. Return exactly one verdict:
->
-> - `confirmed`, with the evidence.
-> - `refuted`, with the evidence.
-> - `ungrounded`, if you can neither confirm nor refute from the repo.
->
-> Evidence means tool output: a command result or quoted file lines. Your judgement alone grades as `ungrounded`.
-
-Route each claim to the cheapest sufficient proof:
-
-- **Mechanical claims** (line length, naming, a file, API, flag, or option existing): the verifier runs the measuring command. Its output is the verdict; attestation without output grades as `ungrounded`.
-- **Semantic claims** (duplication, incorrect behavior, missing requirement): the verifier reads every code path the claim touches, end to end, in the working tree, not the diff hunks alone.
-- **Directives** (any claim whose fix says remove X or change X to Y): verify the consequence, not the statement. The proposition to test is "the change still behaves correctly with the directive applied". Trace what the targeted code does at runtime before endorsing its removal.
-
-**Spec conflicts resolve against runtime truth.** When the diff does something the spec forbids, the spec may be the wrong side. Verify which side matches actual behavior — code paths, call ordering, defaults — and report the conflict itself with that evidence. A directive to make the diff match the spec is only valid once runtime truth sides with the spec.
-
-Baseline smells keep their heuristic label; verify only that the quoted code exists as described.
-
-This step is done when every claim carries exactly one verdict with its evidence.
 
 ### 6. Aggregate
 
