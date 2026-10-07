@@ -1,0 +1,5 @@
+interface:
+  display_name: "Job Apply"
+  short_description: "Apply to internships found by is-dl in a private headless browser"
+policy:
+  allow_implicit_invocation: false
