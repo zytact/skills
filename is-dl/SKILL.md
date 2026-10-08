@@ -66,10 +66,12 @@ The live corpus carries test listings, for example rows titled "DO NOT REGISTER"
 ## Finding listings
 
 ```bash
-is-dl search -k "backend developer intern" -l "Remote" --limit 50 \
+is-dl search -k "backend developer intern" -l India --limit 50 \
   --remote-only --experience-level Internship \
   --exclude-unpaid --exclude-applied --exclude-seen --json
 ```
+
+On LinkedIn, `-l`, `--remote-only`, `--experience-level` and `--job-type` are not hard filters. LinkedIn's search reads them from the query text, so is-dl appends them to the keywords, as in `backend developer intern, internship, remote, in India`, and LinkedIn decides what they mean. "Worldwide" can come back as one country, and an Internship search can return full-time roles. Check each listing's location and type rather than trusting the flags. Always pass `-l`: without it LinkedIn uses the account's last searched location. Only `--posted-within` is still an exact LinkedIn filter.
 
 Three filters, three different questions:
 
@@ -85,15 +87,15 @@ A job with no id cannot be tracked and will resurface. Reposts get fresh ids and
 
 Saved profiles live in config, so a repeated search is `is-dl search --profile frontend-intern --json`.
 
-LinkedIn scraping is slow and rate-limited on purpose, around 1 to 3 seconds per listing, so a 50-listing run takes minutes and a mixed search runs at LinkedIn's pace. Do not run several searches in parallel; they share one browser and one session. LinkedIn navigation times out intermittently, so retry a failed search once or twice before reporting it as broken.
+LinkedIn scraping is slow, around 10 seconds per listing while each job's description loads, so a 50-listing run takes 8 minutes or more and a mixed search runs at LinkedIn's pace. Do not run several searches in parallel; they share one browser and one session. LinkedIn navigation times out intermittently, so retry a failed search once or twice before reporting it as broken.
 
-With `--exclude-seen` on, LinkedIn skips a known listing before opening it, so a repeat search is faster than the first one rather than slower. A log line reading `Giving up after 5 jobs in a row failed to open` means the page shape moved, not that the search was empty. Report that as broken instead of retrying it.
+With `--exclude-seen` on, LinkedIn skips a known listing before opening it, so a repeat search is faster than the first one rather than slower. A log line reading `Giving up after 5 jobs in a row failed to open`, or an error saying `LinkedIn may have changed its page layout`, means the page shape moved, not that the search was empty. Report that as broken instead of retrying it. A stderr warning that the job description did not appear means the same thing for descriptions, even though the job is still returned.
 
 ## Reading the output
 
 Each listing carries:
 
-- `pay: { kind, evidence, amount }` where kind is `paid`, `token`, `unpaid` or `unstated`. `evidence` is the exact matched snippet. `amount` holds figures only when the board published them as data, which Unstop does for roughly 43% of listings and LinkedIn does not. Quote them rather than trusting the label blindly.
+- `pay: { kind, evidence, amount }` where kind is `paid`, `token`, `unpaid` or `unstated`. `evidence` is the exact matched snippet. `amount` holds figures only when the board published them as data, which Unstop does for roughly 43% of listings and LinkedIn does not. LinkedIn sometimes shows pay as a tag such as `7,500 INR/month`, which lands in `jobType` instead. Quote them rather than trusting the label blindly.
 - `locationConflict: { tagged, claimed }` when a board tags a role Remote but the body demands attendance. Never filtered, only surfaced. Always mention it.
 - `source` names the board the listing came from.
 

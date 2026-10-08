@@ -57,6 +57,8 @@ is-dl search -k "<role> intern" --source linkedin -l Worldwide --remote-only \
   --experience-level Internship --exclude-unpaid --exclude-applied --exclude-seen --json
 ```
 
+LinkedIn reads `-l Worldwide` as text and tends to narrow it to the account's country. That suits this skill, but check each listing's location against the remote rule below.
+
 Roles, one search each, in this order until you have enough candidates: software engineer, forward deployed engineer, full stack developer, backend developer, frontend developer. Add any other role the descriptions suggest fits. Skip Unstop. A search can return the same `jobId` twice; keep one.
 
 `--exclude-seen` hides every listing a search has returned before, opened or not. Before you start applying, write the kept candidates to `pending.json` (see Log), so an interrupted run does not lose them.
