@@ -24,6 +24,7 @@ Then ask the user, in one batch, everything still open:
 - The model and effort for the main thread, if they didn't name one.
 - Merge policy per task. A task that changes policy or leaves a design point open should get a PR left open for review.
 - Shared external resources that threads running at the same time would compete for, such as one account's rate limit.
+- The usage gate's skip threshold, default 60% of the 5-hour window with the reset more than 45 minutes away, and which tasks may be skipped.
 
 Done when every task has a time, a branch name, a model, and a merge policy.
 
@@ -35,8 +36,18 @@ Scheduled tasks only recur, so make each one delete itself the moment it fires. 
 - Bound to this thread, title `<Skill> #<n>`, stable `clientRequestId`.
 - A prompt with these steps for you to follow when it fires:
   1. Find the task by title with `list_scheduled_tasks` and delete it.
-  2. Run `t3_thread_launch` with the title, the worktree strategy (`baseRef` the default branch, the new branch, `startFromOrigin: true`), the model, and `runtimeMode: full-access`. Pass the thread message between `BEGIN` and `END` markers, verbatim.
-  3. Confirm the thread started with `t3_thread_read`. If a launch fails, check `t3_thread_list` before you retry.
+  2. If the task may be skipped, run the usage gate below for the thread's provider. Over the threshold, launch nothing and say the task was skipped, with the utilization and reset time.
+  3. Run `t3_thread_launch` with the title, the worktree strategy (`baseRef` the default branch, the new branch, `startFromOrigin: true`), the model, and `runtimeMode: full-access`. Pass the thread message between `BEGIN` and `END` markers, verbatim.
+  4. Confirm the thread started with `t3_thread_read`. If a launch fails, check `t3_thread_list` before you retry.
+
+### Usage gate
+
+Read the 5-hour window of the account the thread's model bills to, once per gate:
+
+- **Claude models.** Take `claudeAiOauth.accessToken` from `~/.claude/.credentials.json` and GET `https://api.anthropic.com/api/oauth/usage` with `Authorization: Bearer <token>` and `anthropic-beta: oauth-2025-04-20`. Use `five_hour.utilization` (a percentage) and `five_hour.resets_at`.
+- **GPT models through Codex.** Take `tokens.access_token` and `tokens.account_id` from `~/.codex/auth.json` and GET `https://chatgpt.com/backend-api/wham/usage` with `Authorization: Bearer <token>` and `chatgpt-account-id: <account_id>`. The 5-hour window is whichever of `rate_limit.primary_window` and `rate_limit.secondary_window` has `limit_window_seconds` 18000. Use its `used_percent` and `reset_at` (epoch seconds). Which windows exist depends on the plan tier, so if neither has 18000, the plan has no 5-hour limit and the gate passes.
+
+If the read fails, the gate passes and the launch notes the failure.
 
 The thread message starts with `/<skill> <task>` and the skill file's path as a fallback, since user-invoked skills may not load from a message. It then covers:
 
@@ -52,11 +63,12 @@ The thread message starts with `/<skill> <task>` and the skill file's path as a 
 T3 Code resumes threads stopped by a usage limit once the limit resets. The check-in catches the runs where that resume fails, or a thread stops for another reason. Add one more self-deleting schedule, `Night shift check-in`, timed well after the last task should finish. When it fires, bring every task to one of these states:
 
 - Its schedule never fired: follow that schedule's prompt now.
+- Its schedule fired but the usage gate skipped it: leave it skipped and report it, so the user decides.
 - Its thread is still running: leave it.
 - Its thread finished: PR open or merged per its merge policy, or a reported blocker.
 - Its thread stopped partway through: one `t3_thread_send` telling it to resume the skill from where it stopped, then confirm it picked the work back up.
 
-Each task keeps exactly one thread. The check-in ends on a table of task, thread state, PR and action taken.
+Each task keeps at most one thread. The check-in ends on a table of task, thread state, PR and action taken.
 
 Done when every task and the check-in appear in `list_scheduled_tasks` with the right `nextRunAt`.
 
