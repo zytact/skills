@@ -8,7 +8,7 @@ Review the diff between `HEAD` and a fixed point supplied by the user along two 
 - **Standards** checks whether the code follows the repo's documented coding standards.
 - **Spec** checks whether the code implements what the originating issue or spec asked for.
 
-One finder sub-agent reviews both axes in separate passes. Treat its findings as claims: verify each one with a clean-context verifier sub-agent, then aggregate the surviving results without merging or reranking them.
+One finder sub-agent reviews both axes in separate passes.
 
 
 ## Process
