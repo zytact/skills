@@ -153,7 +153,3 @@ Code may follow every project standard while implementing the wrong behavior. Th
 Code may implement the requested behavior correctly while breaking the project's conventions. That is a Spec pass and a Standards fail.
 
 Keeping the reports separate prevents one kind of correctness from hiding problems in the other.
-
-## Why a verifier lane
-
-Finders are tuned for recall and state plausible falsehoods with full confidence. The parent cannot catch these: it assembled the findings into a narrative and checks them inside that frame. A clean-context verifier holding only the bare claim has no stake in it being true, which is the property that makes refutation possible. Verification raises precision toward its ceiling; recall stays whatever the finder achieves, so verification never substitutes for a second finder lens.
