@@ -19,7 +19,7 @@ B=<this skill's folder>/scripts/browser.mjs
 node $B start                 # refresh the profile copy and launch
 node $B open <url>            # new tab, becomes current
 node $B snapshot              # page text plus numbered elements; scoped to an open modal, --all for the whole page
-node $B click <ref>
+node $B click <ref>            # prints dialog: true when a modal is open after the click
 node $B fill <ref> <text>     # replaces the field's text, prints the value it now holds
 node $B select <ref> <label>  # native <select> only; for custom dropdowns click, snapshot, click the option
 node $B upload <ref> <file>   # file inputs show in snapshots even when hidden
@@ -33,6 +33,8 @@ node $B stop
 ```
 
 Refs come from the latest snapshot. Take a new one after every click that changes the page. A typeahead field, such as a city, wants you to fill it, snapshot, and click a suggestion. When a form sits in an iframe, `eval` its `src` and `goto` it.
+
+A LinkedIn listing loads its description late. Wait about 6 seconds after `open`, click "… more" if the description shows one, then snapshot with `--all`.
 
 ## First run on a machine
 
@@ -65,7 +67,7 @@ Roles, one search each, in this order until you have enough candidates: software
 
 Judge each listing by reading its description, as the is-dl skill describes. The pay label misses pay stated in the text, so read for it. Keep a listing only if all of these hold:
 
-- Actually remote. Required office attendance, or a restriction to countries other than India, rules it out. A `locationConflict` raised by an optional perk, such as an office gym, does not.
+- Actually remote. Required office attendance, or a restriction to countries other than India, rules it out. So does a form question asking whether you can work from a named office; reject the job then. A `locationConflict` raised by an optional perk, such as an office gym, does not.
 - Paid or pay unstated. Pay counts when its stated amount is at least INR 5,000 a month, including "up to", performance-based and incentive stipends. Unpaid and smaller amounts are out.
 - Doable alongside a final-year degree in about 6 hours a week, or hours unstated. Skip roles that demand full-time hours during IST working days.
 - A fit for the resume. Skip roles that need years of experience or skills the resume does not show.
@@ -79,15 +81,16 @@ For each kept listing, one at a time:
 
 1. Add a variant to `variants.yaml` named `<company>-<role>`, by copying an existing block and changing only `headline`, `lead` and `drop`. Build it with `is-dl resume build --variant <name> --json` and take the PDF path from its output. Fix overflow by dropping bullets, as the is-dl skill says.
 2. `open` the listing and `snapshot`.
-3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, stop on this job.
+3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, stop on this job. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
 4. Fill the form:
    - Contact fields and screening questions come from `answers.md`. Copy the facts. Do not round, stretch or guess. Where `answers.md` and `resume.yaml` disagree, `answers.md` wins in forms. Never edit `resume.yaml` to match.
-   - Upload the built PDF with `upload`. Replace any resume LinkedIn preselected.
-   - Years of experience with a skill: count only what the resume shows. Coursework and personal projects count as under one year. A field that only takes a number gets whole completed years, so `0` for under one year.
+   - Upload the built PDF. On LinkedIn, click "Upload resume" first so the file input exists, then `upload`. Snapshot and check the new file's radio is the selected one.
+   - Years of experience with a skill: count only what the resume shows. Coursework and personal projects count as under one year. A field that only takes a number gets whole completed years, so `0` for under one year. LinkedIn prefills these from past applications; overwrite every prefilled answer with what the resume shows.
+   - Uncheck "Follow company" and any other prechecked box that is not part of the application.
    - Short free-text answers, up to about 3 sentences, you write yourself from facts in `resume.yaml` and the listing. Never claim anything the resume does not show.
    - Easy Apply runs over several pages. Fill, click Next or Review, snapshot, repeat.
 5. On the last page before submit, snapshot and check every field against what you meant to send.
-6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen.
+6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. If nothing confirms within 60 seconds, do not resubmit. Mark the job `interrupted` with what you sent, and the user checks their email.
 7. Log it, as described below.
 8. `close` the tab, then wait 3 to 6 minutes before the next listing.
 

@@ -9,7 +9,7 @@
 //   goto <url>            navigate the current tab
 //   tabs                  list open tabs; use <id> makes one current
 //   snapshot [--all]      text plus numbered form elements, scoped to an open dialog unless --all
-//   click <ref>           real mouse click on an element from the last snapshot
+//   click <ref>           real mouse click on an element from the last snapshot; reports whether a dialog is open
 //   fill <ref> <text>     replace an input or textarea's text
 //   select <ref> <label>  choose a native <select> option by its visible label
 //   upload <ref> <file>   set a file input's file
@@ -112,8 +112,15 @@ async function settle(evaluate) {
   await sleep(800);
 }
 
+/** Page JS for the open modal dialogs, last one on top. */
+const DIALOGS = `(() => {
+  const visible = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+  const modal = (el) => el.tagName === 'DIALOG' || el.getAttribute('aria-modal') === 'true' || /modal/i.test(el.className);
+  return [...document.querySelectorAll('[role=dialog], [role=alertdialog], dialog[open]')].filter((el) => visible(el) && modal(el));
+})()`;
+
 async function where(evaluate) {
-  return evaluate('({ url: location.href, title: document.title })');
+  return evaluate(`({ url: location.href, title: document.title, dialog: ${DIALOGS}.length > 0 })`);
 }
 
 /** Copies the main profile's Default folder, minus caches and history, into the private copy. */
@@ -133,8 +140,7 @@ const element = (ref) => `document.querySelector('[data-ja-ref="${Number(ref)}"]
 /** Runs in the page: numbers visible form elements and returns them with readable text. */
 const SNAPSHOT = (all) => `(() => {
   const visible = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
-  const modal = (el) => el.tagName === 'DIALOG' || el.getAttribute('aria-modal') === 'true' || /modal/i.test(el.className);
-  const dialogs = [...document.querySelectorAll('[role=dialog], [role=alertdialog], dialog[open]')].filter((el) => visible(el) && modal(el));
+  const dialogs = ${DIALOGS};
   const root = ${all} || dialogs.length === 0 ? document.body : dialogs.at(-1);
   const clean = (s) => (s ?? '').replace(/\\s+/g, ' ').trim();
   const choice = (el) => el.type === 'radio' || el.type === 'checkbox';
