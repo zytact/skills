@@ -69,6 +69,7 @@ Judge each listing by reading its description, as the is-dl skill describes. The
 - Paid or pay unstated. Pay counts when its stated amount is at least INR 5,000 a month, including "up to", performance-based and incentive stipends. Unpaid and smaller amounts are out.
 - Doable alongside a final-year degree in about 6 hours a week, or hours unstated. Skip roles that demand full-time hours during IST working days.
 - A fit for the resume. Skip roles that need years of experience or skills the resume does not show.
+- A real company hiring for its own product or clients. Skip internship mills: India-only outfits whose name is built around interning, skilling or mentoring (internmo, Skillzenloop, Unified Mentor), and listings that sell a "structured internship program" for freshers with a certificate, a performance-based "up to" stipend and the same template posted for many roles.
 
 Fewer good listings than the limit is fine. Never pad.
 
