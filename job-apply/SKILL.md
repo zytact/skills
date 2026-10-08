@@ -112,7 +112,7 @@ When the user answers, add each reusable fact under "Learned answers" in `answer
 
 ## Log
 
-`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped` or `interrupted`) and, when stopped, `question`. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file.
+`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped` or `interrupted`) and, when stopped, `question`. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`). A stopped job keeps its variant.
 
 Run both commands right after the confirmation page:
 
