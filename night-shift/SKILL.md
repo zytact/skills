@@ -21,24 +21,40 @@ Check what a fresh worktree lacks:
 Then ask the user, in one batch, everything still open:
 
 - Start times as fixed clock times. Turn "an hour after the last one" into a time.
+- The latest start time. No task launches after it, so a long deferral can't push the queue into the user's day.
 - The model and effort for the main thread, if they didn't name one.
 - Merge policy per task. A task that changes policy or leaves a design point open should get a PR left open for review.
-- Shared external resources that threads running at the same time would compete for, such as one account's rate limit.
-- The usage gate's skip threshold, default 60% of the 5-hour window with the reset more than 45 minutes away, and which tasks may be skipped.
+- Shared external resources that threads on different providers would still compete for when they run at the same time.
+- The usage gate's threshold, default 60% of the 5-hour window with the reset more than 45 minutes away, and which tasks it applies to.
 
-Done when every task has a time, a branch name, a model, and a merge policy.
+Done when every task has a time, a branch name, a model, and a merge policy, and the queue has a latest start time.
 
 ## 2. Schedule
 
 Scheduled tasks only recur, so make each one delete itself the moment it fires. Create one `schedule_task` per task:
 
-- `schedule`: `fixed_time` at its time, `weekdays` set to today's weekday only. A failed delete then repeats a week later, not tomorrow.
+- `schedule`: `fixed_time` and `weekdays` from its fire time, as described in "Fire times" below. A failed delete then repeats a week later, not tomorrow.
 - Bound to this thread, title `<Skill> #<n>`, stable `clientRequestId`.
 - A prompt with these steps for you to follow when it fires:
   1. Find the task by title with `list_scheduled_tasks` and delete it.
-  2. If the task may be skipped, run the usage gate below for the thread's provider. Over the threshold, launch nothing and say the task was skipped, with the utilization and reset time.
-  3. Run `t3_thread_launch` with the title, the worktree strategy (`baseRef` the default branch, the new branch, `startFromOrigin: true`), the model, and `runtimeMode: full-access`. Pass the thread message between `BEGIN` and `END` markers, verbatim.
-  4. Confirm the thread started with `t3_thread_read`. If a launch fails, check `t3_thread_list` before you retry.
+  2. Queue rule. If `t3_thread_list` shows an unfinished thread from this queue on the same provider, defer 30 minutes from now. A thread stopped by a usage limit that T3 will resume counts as unfinished. Also defer if a lower-numbered task on the same provider still has a pending schedule.
+  3. Usage gate. If the gate applies to this task and trips, defer to the reset time plus 5 minutes.
+  4. Run `t3_thread_launch` with the title, the worktree strategy (`baseRef` the default branch, the new branch, `startFromOrigin: true`), the model, and `runtimeMode: full-access`. Pass the thread message between `BEGIN` and `END` markers, verbatim.
+  5. Confirm the thread started with `t3_thread_read`. If a launch fails, check `t3_thread_list` before you retry.
+
+The provider is the account the task's model bills to, the same one the usage gate reads. At most one thread per provider runs at a time, and tasks on one provider launch in queue order. Tasks on different providers don't wait on each other. The queue rule runs first, so a blocked task doesn't read usage for nothing.
+
+To defer, launch nothing. Add the task number in minutes to the deferred time, so a deferred task never lands on the same minute as another task's slot. If that time falls after the latest start time, skip the task instead. Otherwise create a new self-deleting schedule at that time with the same title and prompt. Either way, say why: the running thread's title, or the utilization and reset time.
+
+### Fire times
+
+Every schedule, initial or deferred, gets its time this way:
+
+1. Compute the fire time as a full timestamp. Claude's `resets_at` is an ISO string and Codex's `reset_at` is epoch seconds.
+2. Convert it to the machine's local time.
+3. Set `fixed_time` to its local clock time and `weekdays` to its local weekday.
+
+This keeps a schedule that crosses midnight from landing on a day that has already passed.
 
 ### Usage gate
 
@@ -60,18 +76,20 @@ The thread message starts with `/<skill> <task>` and the skill file's path as a 
 
 ## 3. Schedule the check-in
 
-T3 Code resumes threads stopped by a usage limit once the limit resets. The check-in catches the runs where that resume fails, or a thread stops for another reason. Add one more self-deleting schedule, `Night shift check-in`, timed well after the last task should finish. When it fires, bring every task to one of these states:
+T3 Code resumes threads stopped by a usage limit once the limit resets. The check-in catches the runs where that resume fails, or a thread stops for another reason. Add one more self-deleting schedule, `Night shift check-in`, at the latest start time plus one typical run. When it fires, bring every task to one of these states:
 
-- Its schedule never fired: follow that schedule's prompt now.
-- Its schedule fired but the usage gate skipped it: leave it skipped and report it, so the user decides.
+- Its original schedule never fired: delete it and report the task as skipped.
+- A deferred schedule is still pending: leave it and report it as still deferred, with the last reason.
+- A deferral would have missed the latest start time: leave it skipped and report it, so the user decides.
+- It has no schedule and no thread: report it as lost. It deleted its schedule and then failed to create the deferred one.
 - Its thread is still running: leave it.
 - Its thread finished: PR open or merged per its merge policy, or a reported blocker.
 - Its thread stopped partway through: one `t3_thread_send` telling it to resume the skill from where it stopped, then confirm it picked the work back up.
 
-Each task keeps at most one thread. The check-in ends on a table of task, thread state, PR and action taken.
+Each task keeps at most one thread. The check-in ends on a table of task, thread state, deferrals and their reasons, PR and action taken.
 
 Done when every task and the check-in appear in `list_scheduled_tasks` with the right `nextRunAt`.
 
 ## Report
 
-A table of time, task, branch and merge policy, the check-in time, plus anything the user must keep true while away, such as the machine staying awake.
+A table of time, task, provider, branch and merge policy, the latest start time, the check-in time, plus anything the user must keep true while away, such as the machine staying awake.
