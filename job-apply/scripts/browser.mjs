@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Drives a private headless Helium for job applications over the DevTools protocol.
+// Drives a private Helium for job applications over the DevTools protocol.
 // The browser runs on a copy of the user's main Helium profile, so it carries their
-// logins without touching the running browser. Every command prints one JSON line.
+// logins without touching the running browser. It runs in a real window on a virtual
+// X display, since sites' captchas reject headless browsers. Every command prints one JSON line.
 //
 //   start                 sync the profile copy (if stopped) and launch the browser
 //   stop                  quit the browser
@@ -199,14 +200,17 @@ const commands = {
     if (url && (await connect(url).then((c) => (c.close(), true)).catch(() => false))) {
       return out({ ok: true, running: true });
     }
+    if (spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
     syncProfile();
+    // Without WAYLAND_DISPLAY and with ozone on x11, the window opens on Xvfb, never on the user's screen.
+    const { WAYLAND_DISPLAY, ...env } = process.env;
     const child = spawn(
-      BROWSER,
-      [`--user-data-dir=${PROFILE}`, '--headless=new', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'],
-      { detached: true, stdio: 'ignore' },
+      'xvfb-run',
+      ['-a', '-s', '-screen 0 1280x900x24', BROWSER, `--user-data-dir=${PROFILE}`, '--ozone-platform=x11', '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'],
+      { detached: true, stdio: 'ignore', env },
     );
     child.unref();
-    for (let i = 0; i < 40 && !endpoint(); i++) await sleep(250);
+    for (let i = 0; i < 60 && !endpoint(); i++) await sleep(250);
     if (!endpoint()) fail('Browser did not start.');
     out({ ok: true, running: true, synced: true });
   },

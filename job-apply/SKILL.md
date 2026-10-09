@@ -1,6 +1,6 @@
 ---
 name: job-apply
-description: Find internships with is-dl and apply to them in a private headless browser that carries the user's logins, uploading a tailored resume, answering screening questions from the user's answer bank, and logging each submission in is-dl. Use when asked to apply to jobs, or when a scheduled application run fires.
+description: Find internships with is-dl and apply to them in a private browser that carries the user's logins, uploading a tailored resume, answering screening questions from the user's answer bank, and logging each submission in is-dl. Use when asked to apply to jobs, or when a scheduled application run fires.
 disable-model-invocation: true
 ---
 
@@ -12,7 +12,7 @@ This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL
 
 ## The browser
 
-`scripts/browser.mjs` in this skill's folder drives a private headless Helium. It runs on a copy of the user's main Helium profile, so it is signed in to LinkedIn, Google and the rest. It never touches the browser the user has open. Every command prints one JSON line.
+`scripts/browser.mjs` in this skill's folder drives a private Helium in a window on a virtual X display, never on the user's screen. It is not headless, because captchas reject headless browsers. It runs on a copy of the user's main Helium profile, so it is signed in to LinkedIn, Google and the rest. It never touches the browser the user has open. Every command prints one JSON line.
 
 ```bash
 B=<this skill's folder>/scripts/browser.mjs
@@ -42,6 +42,7 @@ A new machine lacks the user's private files. Set up whatever is missing, then c
 
 - **`~/.config/is-dl/answers.md`.** Copy `references/answers-template.md` from this skill's folder there. Ask the user for every `<placeholder>` in one message, fill in their answers in their words, and leave "Learned answers" empty. Take anything the resume already states, such as degree and graduation, from `resume.yaml` and ask only to confirm it. Never put the file in a git repository; if `~/.config/is-dl` is a stowed dotfiles folder, check that the repo ignores `answers.md`.
 - **`$APPLICANT_PHONE`.** Ask the user for the number with country code. Add `export APPLICANT_PHONE=<number>` to `~/.secrets`, creating it if needed, and make sure the shell profile sources it (`. "$HOME/.secrets"` in `~/.zshenv`). Never write the number anywhere else.
+- **Xvfb.** `start` needs `xvfb-run`. On Fedora it comes with `xorg-x11-server-Xvfb`.
 - **Helium.** `start` fails without Helium at `/opt/helium/helium` and a signed-in profile at `~/.config/net.imput.helium`. Tell the user to install Helium and sign in to LinkedIn in it. Set `JOB_BROWSER` or `JOB_BROWSER_SOURCE` when either lives elsewhere.
 - **is-dl.** `is-dl doctor` covers it. A missing resume (`~/.config/is-dl/resume/resume.yaml`) is the user's to supply; stop and say so.
 
@@ -79,6 +80,8 @@ is-dl search -k "<role> intern" --source linkedin -l Worldwide --remote-only \
   --experience-level Internship --exclude-unpaid --exclude-applied --exclude-seen --json
 ```
 
+A search takes 2 to 5 minutes, sometimes more. Run each one in the background and read its output when it finishes, rather than in the foreground where a shell timeout can kill it.
+
 LinkedIn reads `-l Worldwide` as text and tends to narrow it to the account's country. That suits this skill, but check each listing's location against the remote rule below.
 
 Roles, one search each, in this order until you have enough candidates: software engineer, forward deployed engineer, full stack developer, backend developer, frontend developer. Add any other role the descriptions suggest fits. Skip Unstop. A search can return the same `jobId` twice; keep one.
@@ -87,10 +90,11 @@ Roles, one search each, in this order until you have enough candidates: software
 
 Judge each listing by reading its description, as the is-dl skill describes. The pay label misses pay stated in the text, so read for it. Keep a listing only if all of these hold:
 
-- Actually remote. Required office attendance, or a restriction to countries other than India, rules it out. So does a form question asking whether you can work from a named office; reject the job then. A `locationConflict` raised by an optional perk, such as an office gym, does not.
+- Actually remote. `--remote-only` does not filter, so first drop listings whose `jobType` says `On-site` or `Hybrid`. Among the rest, required office attendance, or a restriction to countries other than India, rules it out. So does a form question asking whether you can work from a named office; reject the job then. A `locationConflict` raised by an optional perk, such as an office gym, does not.
 - Paid or pay unstated. Pay counts when its stated amount is at least INR 5,000 a month, including "up to", performance-based and incentive stipends. Unpaid and smaller amounts are out.
 - Doable alongside a final-year degree in about 6 hours a week, or hours unstated. Skip roles that demand full-time hours during IST working days.
 - A fit for the resume. Skip roles that need years of experience or skills the resume does not show.
+- A named company. Skip a listing with no company name.
 - A real company hiring for its own product or clients. Skip internship mills: India-only outfits whose name is built around interning, skilling or mentoring (internmo, Skillzenloop, Unified Mentor), and listings that sell a "structured internship program" for freshers with a certificate, a performance-based "up to" stipend and the same template posted for many roles.
 
 Fewer good listings than the limit is fine. Never pad.
@@ -110,7 +114,7 @@ For each kept listing, one at a time:
    - Short free-text answers, up to about 3 sentences, you write yourself from facts in `resume.yaml` and the listing. Never claim anything the resume does not show.
    - Easy Apply runs over several pages. Fill, click Next or Review, snapshot, repeat.
 5. On the last page before submit, snapshot and check every field against what you meant to send.
-6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. If nothing confirms within 60 seconds, do not resubmit. Mark the job `interrupted`, as Log describes.
+6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. If nothing confirms within 60 seconds, do not resubmit. If the page loads a captcha script (`eval` for a `script[src]` containing `recaptcha`, `hcaptcha` or `turnstile`), the captcha most likely rejected it. Stop on the job and ask the user to apply by hand. Otherwise mark the job `interrupted`, as Log describes.
 7. Log it, as described below.
 8. `close` the tab. On a scheduled run, run the usage gate before the next listing, then wait 3 to 6 minutes.
 
