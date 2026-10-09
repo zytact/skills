@@ -45,12 +45,32 @@ A new machine lacks the user's private files. Set up whatever is missing, then c
 - **Helium.** `start` fails without Helium at `/opt/helium/helium` and a signed-in profile at `~/.config/net.imput.helium`. Tell the user to install Helium and sign in to LinkedIn in it. Set `JOB_BROWSER` or `JOB_BROWSER_SOURCE` when either lives elsewhere.
 - **is-dl.** `is-dl doctor` covers it. A missing resume (`~/.config/is-dl/resume/resume.yaml`) is the user's to supply; stop and say so.
 
+## Usage gate
+
+A run lasts 30 minutes or more, so a scheduled run first checks the model's 5-hour usage window. A scheduled run is one whose prompt says so, including a continuation. The gate trips when the window is at 70% or more and resets more than 45 minutes from now.
+
+Read the window of the account the run's own model bills to:
+
+- **Claude models.** Take `claudeAiOauth.accessToken` from `~/.claude/.credentials.json` and GET `https://api.anthropic.com/api/oauth/usage` with `Authorization: Bearer <token>` and `anthropic-beta: oauth-2025-04-20`. Use `five_hour.utilization` (a percentage) and `five_hour.resets_at`.
+- **GPT models through Codex.** Take `tokens.access_token` and `tokens.account_id` from `~/.codex/auth.json` and GET `https://chatgpt.com/backend-api/wham/usage` with `Authorization: Bearer <token>` and `chatgpt-account-id: <account_id>`. The 5-hour window is whichever of `rate_limit.primary_window` and `rate_limit.secondary_window` has `limit_window_seconds` 18000. Use its `used_percent` and `reset_at` (epoch seconds). If neither has 18000, the plan has no 5-hour limit and the gate passes.
+
+If the read fails, the gate passes and the report notes the failure.
+
+When the gate trips:
+
+1. `node $B stop` if the browser is running.
+2. Create one `schedule_task` titled `Job apply continuation`, bound to this thread: `fixed_time` at the reset time plus 5 minutes, with `weekdays` set to that time's local weekday, not today's. Its prompt tells the run to find the task by title with `list_scheduled_tasks` and delete it, then run `/job-apply` (fallback: this skill file's path) as a scheduled, non-trial continuation that applies to at most `<n>` jobs, where `<n>` is what remains of the original run's 5.
+3. End with the report.
+
+A run the user starts by hand, and every trial, does not defer. Over the threshold, it reports the utilization and asks whether to go ahead.
+
 ## Before anything
 
-1. `is-dl doctor --json`. Exit 3 means the is-dl LinkedIn session expired: stop and tell the user to run `is-dl login`.
-2. Read `~/.config/is-dl/answers.md`. It holds every fact you may put in a form. The phone number is in `$APPLICANT_PHONE`. If either is missing, set it up as "First run on a machine" says.
-3. Read `~/.local/state/job-apply/pending.json` if it exists. It holds jobs an earlier run left waiting on the user or interrupted. Finish those first, using any answers the user has given since. They count toward the run's limit of 5 applications.
-4. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". If it is signed out, stop and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
+1. On a scheduled run, the usage gate. If it trips, do nothing else.
+2. `is-dl doctor --json`. Exit 3 means the is-dl LinkedIn session expired: stop and tell the user to run `is-dl login`.
+3. Read `~/.config/is-dl/answers.md`. It holds every fact you may put in a form. The phone number is in `$APPLICANT_PHONE`. If either is missing, set it up as "First run on a machine" says.
+4. Read `~/.local/state/job-apply/pending.json` if it exists. Apply first to its `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. Never reopen an `interrupted` job; see Log.
+5. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". If it is signed out, stop and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
 
 ## Find
 
@@ -90,9 +110,9 @@ For each kept listing, one at a time:
    - Short free-text answers, up to about 3 sentences, you write yourself from facts in `resume.yaml` and the listing. Never claim anything the resume does not show.
    - Easy Apply runs over several pages. Fill, click Next or Review, snapshot, repeat.
 5. On the last page before submit, snapshot and check every field against what you meant to send.
-6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. If nothing confirms within 60 seconds, do not resubmit. Mark the job `interrupted` with what you sent, and the user checks their email.
+6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. If nothing confirms within 60 seconds, do not resubmit. Mark the job `interrupted`, as Log describes.
 7. Log it, as described below.
-8. `close` the tab, then wait 3 to 6 minutes before the next listing.
+8. `close` the tab. On a scheduled run, run the usage gate before the next listing, then wait 3 to 6 minutes.
 
 `node $B stop` when the run ends.
 
@@ -115,7 +135,9 @@ When the user answers, add each reusable fact under "Learned answers" in `answer
 
 ## Log
 
-`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped` or `interrupted`) and, when stopped, `question`. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`). A stopped job keeps its variant.
+`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped` or `interrupted`), `question` when stopped, and `sent` when interrupted: the site and every field you submitted. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`). A stopped job keeps its variant.
+
+An interrupted job may have gone through, so no run submits it again, and it does not count toward a run's 5. It stays in the file until the user says what happened. If it went through, log it as below from its `sent` and remove the entry. If it did not, set it back to `queued`.
 
 Run both commands right after the confirmation page:
 
@@ -141,5 +163,7 @@ End every run with:
 
 - Each application: company, role, link, variant, and any answer you wrote yourself.
 - Each stopped job and what it needs from the user.
+- Each interrupted job, from every run so far: link and what was sent. Ask whether it went through.
 - Listings you rejected, with one line each on why.
 - How many of the run's 5 you applied to.
+- When the usage gate deferred the run: the utilization, the reset time, and when the continuation fires.
