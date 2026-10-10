@@ -76,26 +76,27 @@ A run the user starts by hand, and every trial, does not defer. Over the thresho
 ## Find
 
 ```bash
-is-dl search -k "<role> intern" --source linkedin -l Worldwide --remote-only \
+is-dl search -k "<role> intern" --source linkedin -l "<location>" --remote-only \
   --experience-level Internship --posted-within "Past week" --exclude-unpaid --exclude-applied --exclude-seen --json
 ```
 
 A search takes 2 to 5 minutes, sometimes more. Run each one in the background and read its output when it finishes, rather than in the foreground where a shell timeout can kill it.
 
-LinkedIn reads `-l Worldwide` as text and tends to narrow it to the account's country. That suits this skill, but check each listing's location against the remote rule below.
+LinkedIn searches one place at a time. It has no worldwide option, and `-l Worldwide` falls back to the account's country. Use these locations, one search each: `India`, `United States`, `Europe`.
 
-Roles, one search each, in this order until you have enough candidates: software engineer, forward deployed engineer, full stack developer, backend developer, frontend developer. Add any other role the descriptions suggest fits. Skip Unstop. A search can return the same `jobId` twice; keep one.
+Search software engineer in all three locations first. LinkedIn's search matches meaning, so a second role in the same location mostly repeats the first search's listings and then returns on-site ones. Only if you are still short of candidates, search one more role across the three locations, in this order: full stack developer, AI engineer, forward deployed engineer. Skip Unstop. A search can return the same `jobId` twice; keep one.
 
 `--exclude-seen` hides every listing a search has returned before, opened or not. Keep `--posted-within`: without it, the search pages past the seen listings into months-old on-site results. Before you start applying, write the kept candidates to `pending.json` (see Log), so an interrupted run does not lose them.
 
 Judge each listing by reading its description, as the is-dl skill describes. The pay label misses pay stated in the text, so read for it. Keep a listing only if all of these hold:
 
-- Actually remote. `--remote-only` only adds "remote" to the query text, which LinkedIn ranks by but does not enforce, so first drop listings whose `jobType` says `On-site` or `Hybrid`. Among the rest, required office attendance, or a restriction to countries other than India, rules it out. So does a form question asking whether you can work from a named office; reject the job then. A `locationConflict` raised by an optional perk, such as an office gym, does not.
+- Actually remote. `--remote-only` only adds "remote" to the query text, which LinkedIn ranks by but does not enforce, so first drop listings whose `jobType` says `On-site` or `Hybrid`. Among the rest, required office attendance rules it out. So does anything the user cannot meet from India: work authorization or residence in another country, enrollment at a university there, or a working language other than English. Many United States and Europe listings have one of these. A listing that states none of them stays in. A form question asking whether you can work from a named office also rules the job out; reject it then. A `locationConflict` raised by an optional perk, such as an office gym, does not.
 - Paid or pay unstated. Pay counts when its stated amount is at least INR 5,000 a month, including "up to", performance-based and incentive stipends. Unpaid and smaller amounts are out.
-- Doable alongside a final-year degree in about 6 hours a week, or hours unstated. Skip roles that demand full-time hours during IST working days.
-- A fit for the resume. Skip roles that need years of experience or skills the resume does not show.
+- A fit for the resume. Skip roles that need years of experience, or a language or field the resume does not show, such as Java or embedded systems. A framework the resume lacks is not a reason to skip when the resume shows its language. A Django role fits a resume with Python and FastAPI.
 - A named company. Skip a listing with no company name.
 - A real company hiring for its own product or clients. Skip internship mills: India-only outfits whose name is built around interning, skilling or mentoring (internmo, Skillzenloop, Unified Mentor), and listings that sell a "structured internship program" for freshers with a certificate, a performance-based "up to" stipend and the same template posted for many roles.
+
+Hours do not decide. Never skip a listing for a `Full-time` tag or for stated full-time hours; the user settles hours with the company after an offer. If a form asks about hours, answer from `answers.md`.
 
 Fewer good listings than the limit is fine. Never pad.
 
