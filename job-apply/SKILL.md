@@ -80,9 +80,11 @@ is-dl search -k "<role> intern" --source linkedin -l "<location>" --remote-only 
   --experience-level Internship --posted-within "Past week" --exclude-unpaid --exclude-applied --exclude-seen --json
 ```
 
-A search takes 2 to 5 minutes, sometimes more. Run each one in the background and read its output when it finishes, rather than in the foreground where a shell timeout can kill it.
+A search takes 2 to 5 minutes, sometimes more, and a full 50-listing run can take 50. Run each search as its own background job with a 2-hour timeout, and read its output file when the job finishes. A foreground or default-timeout job gets killed at 30 minutes and loses the listings it had collected.
 
-LinkedIn searches one place at a time. It has no worldwide option, and `-l Worldwide` falls back to the account's country. Use these locations, one search each: `India`, `United States`, `Europe`.
+LinkedIn searches one place at a time. It has no worldwide option, and `-l Worldwide` falls back to the account's country. Use these locations, one search each: `India`, `United States`, `Europe`. Start the three as separate background jobs at the same time, so the slowest location does not hold up the others. Each search opens its own browser, so they do not collide.
+
+When a search fails with a navigation or job-list timeout, run it once more. If the retry fails too, skip that location for this run and say so in the report. Never retry a third time, and never retry exit 3 or 4.
 
 Search software engineer in all three locations first. LinkedIn's search matches meaning, so a second role in the same location mostly repeats the first search's listings and then returns on-site ones. Only if you are still short of candidates, search one more role across the three locations, in this order: full stack developer, AI engineer, forward deployed engineer. Skip Unstop. A search can return the same `jobId` twice; keep one.
 

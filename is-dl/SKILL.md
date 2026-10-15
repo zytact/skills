@@ -87,7 +87,7 @@ A job with no id cannot be tracked and will resurface. Reposts get fresh ids and
 
 Saved profiles live in config, so a repeated search is `is-dl search --profile frontend-intern --json`.
 
-LinkedIn scraping is slow, around 10 seconds per listing while each job's description loads, so a 50-listing run takes 8 minutes or more and a mixed search runs at LinkedIn's pace. Do not run several searches in parallel; they share one browser and one session. LinkedIn navigation times out intermittently, so retry a failed search once or twice before reporting it as broken.
+LinkedIn scraping is slow, around 10 seconds per listing while each job's description loads, so a 50-listing run takes 8 minutes or more and a mixed search runs at LinkedIn's pace. Searches for different locations can run in parallel: each one launches its own browser from the saved session. Run long searches in the background with a 2-hour timeout, since a 30-minute shell limit kills them. LinkedIn navigation times out intermittently, so retry a failed search once before reporting it as broken.
 
 With `--exclude-seen` on, LinkedIn skips a known listing before opening it, so a repeat search is faster than the first one rather than slower. A log line reading `Giving up after 5 jobs in a row failed to open`, or an error saying `LinkedIn may have changed its page layout`, means the page shape moved, not that the search was empty. Report that as broken instead of retrying it. A stderr warning that the job description did not appear means the same thing for descriptions, even though the job is still returned.
 
