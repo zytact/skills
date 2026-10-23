@@ -32,10 +32,10 @@ Done when every confirmed finding is fixed or has a recorded reason.
 
 `maintain-verification-skill` is user-invoked, so the Skill tool cannot fire it. Read its `SKILL.md` (usually `~/.agents/skills/maintain-verification-skill/SKILL.md`) and run its pass against the skill from step 0, with these overrides:
 
+- Scope the source read, live pass and missing-surface sweep to the features this branch adds or changes. Leave other features alone. Index hygiene still covers the whole map. If the map lacks a feature this branch adds, add it.
+- `clean` and `changed` mean every in-scope feature got source and live coverage.
 - Its corrections ride in this branch as their own commit. It files no PR of its own.
 - A product gap caused by this branch's change gets fixed in the code, then goes back through step 2. Any other product gap goes to the final report.
-
-The pass must cover the feature this branch adds or changes. If the map lacks it, add it.
 
 Done when the pass reaches its `clean` or `changed` outcome. A `blocked` outcome stops the ship: report the blocker.
 
