@@ -88,6 +88,15 @@ When a search fails with a navigation or job-list timeout, run it once more. If 
 
 Search software engineer in all three locations first. LinkedIn's search matches meaning, so a second role in the same location mostly repeats the first search's listings and then returns on-site ones. Only if you are still short of candidates, search one more role across the three locations, in this order: full stack developer, AI engineer, forward deployed engineer. Skip Unstop. A search can return the same `jobId` twice; keep one.
 
+Also run one Y Combinator search every run, next to the LinkedIn ones:
+
+```bash
+is-dl search -k software --source ycombinator --remote-only --ycombinator-skip-us-only \
+  --ycombinator-max-experience 1 --exclude-unpaid --exclude-applied --exclude-seen --json
+```
+
+It needs no browser and finishes in under a minute. Its listings are mostly full-time jobs with an annual USD range in `pay.amount`, so judge pay by the job rule below. Judge each one from its `descriptionText` and `requirementsText` instead of opening the page.
+
 `--exclude-seen` hides every listing a search has returned before, opened or not. Keep `--posted-within`: without it, the search pages past the seen listings into months-old on-site results. Before you start applying, write the kept candidates to `pending.json` (see Log), so an interrupted run does not lose them.
 
 Judge each listing by reading its description, as the is-dl skill describes. The pay label misses pay stated in the text, so read for it. Keep a listing only if all of these hold:
@@ -107,8 +116,8 @@ Fewer good listings than the limit is fine. Never pad.
 For each kept listing, one at a time:
 
 1. Add a variant to `variants.yaml` named `<company>-<role>`, by copying an existing block and changing only `headline`, `lead` and `drop`. Build it with `is-dl resume build --variant <name> --json` and take the PDF path from its output. Fix overflow by dropping bullets, as the is-dl skill says.
-2. `open` the listing and `snapshot`.
-3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, stop on this job. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
+2. `open` the listing and `snapshot`. For a Y Combinator job, `open` its `applyUrl` instead.
+3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, stop on this job. Y Combinator jobs apply on Work at a Startup. If its page asks you to sign in or sign up, stop on every Y Combinator job this run and tell the user to sign in to workatastartup.com in Helium. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
 4. Fill the form:
    - Contact fields and screening questions come from `answers.md`. Copy the facts. Do not round, stretch or guess. Where `answers.md` and `resume.yaml` disagree, `answers.md` wins in forms. Never edit `resume.yaml` to match.
    - Upload the built PDF. On LinkedIn, click "Upload resume" first so the file input exists, then `upload`. Snapshot and check the new file's radio is the selected one.
@@ -142,11 +151,11 @@ When the user answers, add each reusable fact under "Learned answers" in `answer
 
 ## Log
 
-`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped` or `interrupted`), `question` when stopped, and `sent` when interrupted: the site and every field you submitted. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`). A stopped job keeps its variant.
+`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `source`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped` or `interrupted`), `question` when stopped, and `sent` when interrupted: the site and every field you submitted. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`). A stopped job keeps its variant.
 
 An interrupted job may have gone through, so no run submits it again, and it does not count toward a run's 5. It stays in the file until the user says what happened. If it went through, log it as below from its `sent` and remove the entry. If it did not, set it back to `queued`.
 
-Run both commands right after the confirmation page:
+Run both commands right after the confirmation page. For a Y Combinator job, add `--source ycombinator` to each:
 
 ```bash
 is-dl apps add <jobId> --variant <name> --json
