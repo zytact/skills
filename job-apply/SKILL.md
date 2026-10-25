@@ -91,21 +91,23 @@ Search software engineer in all three locations first. LinkedIn's search matches
 Also run one Y Combinator search every run, next to the LinkedIn ones:
 
 ```bash
-is-dl search -k software --source ycombinator --remote-only --ycombinator-skip-us-only \
+is-dl search -k software --source ycombinator --ycombinator-skip-us-only \
   --ycombinator-max-experience 1 --exclude-unpaid --exclude-applied --exclude-seen --json
 ```
 
-It needs no browser and finishes in under a minute. Its listings are mostly full-time jobs with an annual USD range in `pay.amount`, so judge pay by the job rule below. Judge each one from its `descriptionText` and `requirementsText` instead of opening the page.
+It needs no browser and finishes in under a minute. Its listings are mostly full-time jobs with an annual USD range in `pay.amount`, so judge pay by the job rule below. Judge each one from its `descriptionText` and `requirementsText` instead of opening the page. It returns on-site and hybrid listings too, because Y Combinator is where the user also looks for a job after graduating (see below).
 
 `--exclude-seen` hides every listing a search has returned before, opened or not. Keep `--posted-within`: without it, the search pages past the seen listings into months-old on-site results. Before you start applying, write the kept candidates to `pending.json` (see Log), so an interrupted run does not lose them.
 
 Judge each listing by reading its description, as the is-dl skill describes. The pay label misses pay stated in the text, so read for it. Keep a listing only if all of these hold:
 
-- Actually remote. `--remote-only` only adds "remote" to the query text, which LinkedIn ranks by but does not enforce, so first drop listings whose `jobType` says `On-site` or `Hybrid`. Among the rest, required office attendance rules it out. So does anything the user cannot meet from India: work authorization or residence in another country, enrollment at a university there, or a working language other than English. Many United States and Europe listings have one of these. A listing that states none of them stays in. A form question asking whether you can work from a named office also rules the job out; reject it then. A `locationConflict` raised by an optional perk, such as an office gym, does not.
+- Actually remote, or an after-graduation listing (see below). `--remote-only` only adds "remote" to the query text, which LinkedIn ranks by but does not enforce, so first drop listings whose `jobType` says `On-site` or `Hybrid`. Among the rest, required office attendance rules it out. So does anything the user cannot meet from India: work authorization or residence in another country, enrollment at a university there, or a working language other than English. Many United States and Europe listings have one of these. A listing that states none of them stays in. A form question asking whether you can work from a named office also rules the job out; reject it then. A `locationConflict` raised by an optional perk, such as an office gym, does not.
 - Paid or pay unstated. An internship counts when its stated pay is at least INR 5,000 a month, including "up to", performance-based and incentive stipends. A job that is not an internship (contract, full-time) counts at INR 40,000 a month or more in base pay, or INR 8 LPA or more in CTC. Indian listings often quote CTC; never read a CTC as base pay unless the listing says so. Unpaid and smaller amounts are out.
 - A fit for the resume. Skip roles that need years of experience, or a language or field the resume does not show, such as Java or embedded systems. A framework the resume lacks is not a reason to skip when the resume shows its language. A Django role fits a resume with Python and FastAPI.
 - A named company. Skip a listing with no company name.
 - A real company hiring for its own product or clients. Skip internship mills: India-only outfits whose name is built around interning, skilling or mentoring (internmo, Skillzenloop, Unified Mentor), and listings that sell a "structured internship program" for freshers with a certificate, a performance-based "up to" stipend and the same template posted for many roles.
+
+An after-graduation listing is an on-site or hybrid role the user would start in July 2027, after graduating. Every on-site or hybrid Y Combinator listing counts as one, and so does a LinkedIn listing that says it hires 2027 graduates or starts after June 2027. It replaces the remote rule: keep it when the office is in India, or abroad with a visa line that does not say `US citizen/visa only` and nothing else that needs citizenship or residence there. The hours rule below does not apply to it. On its form, answer start date and relocation from the after-graduation lines in `answers.md`.
 
 Hours decide. Keep a listing when its hours fit the user's, as `answers.md` states them: flexible or async hours, part-time, or up to about 40 hours a week. Skip it when it needs more, or fixed working hours during the user's weekday classes. A listing that states no hours, or only says `Full-time`, stays in. If a form asks about hours or a start date, answer from `answers.md`.
 
