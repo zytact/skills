@@ -23,12 +23,12 @@ The task is done when the last look shows the state the user asked for.
 
 ## What lands
 
-Prefer the keyboard. It is the most reliable input here.
+Use the keyboard when it can do the job, and click when the task needs a click.
 
 - **Navigate with the keyboard.** In Files, `ctrl+l`, then `type_text` with the full path, then `enter`, opens a folder.
 - **Scroll with keys.** The mouse wheel doesn't move GTK views like the Files grid. Use `pagedown`, `pageup`, `home` and `end`.
 - **Click by fresh index.** `element_index` refers to the latest `get_app_state` only. After anything changes, look again before clicking by index.
-- **Click by coordinates in screenshot space.** Coordinates are in the screenshot's `coordinate_width` by `coordinate_height` space, not the pixels of a resized image. Divide image pixels by its `scale`.
+- **Click by coordinates in screenshot space.** Screenshots come back resized, and `click` takes positions in the screenshot's `coordinate_width` by `coordinate_height` space. Divide a position read off the image by its `scale`: with `scale: 0.75`, image x=60 is x=80.
 
 To wait, use `screenshot_after` or another look. Code-mode harnesses don't have `setTimeout`.
 
