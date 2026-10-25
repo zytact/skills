@@ -27,8 +27,31 @@ Use the keyboard when it can do the job, and click when the task needs a click.
 
 - **Navigate with the keyboard.** In Files, `ctrl+l`, then `type_text` with the full path, then `enter`, opens a folder.
 - **Scroll with keys.** The mouse wheel doesn't move GTK views like the Files grid. Use `pagedown`, `pageup`, `home` and `end`.
-- **Click by fresh index.** `element_index` refers to the latest `get_app_state` only. After anything changes, look again before clicking by index.
-- **Click by coordinates in screenshot space.** Screenshots come back resized, and `click` takes positions in the screenshot's `coordinate_width` by `coordinate_height` space. Divide a position read off the image by its `scale`: with `scale: 0.75`, image x=60 is x=80.
+### Pick the click method from the tree
+
+Before clicking an element, read its node from the latest `get_app_state` and pick the method once:
+
+| Node | Click with |
+|---|---|
+| `actions` is not empty | `element_index`. The tool calls the element's own action, so its position doesn't matter. |
+| `actions` is empty and `bounds` has a real `x`/`y` (Firefox, Chromium) | `element_index` |
+| `actions` is empty and `bounds` is at `x: 0, y: 0` | Coordinates |
+| No useful tree (Qt and KDE apps expose one node) | Coordinates |
+
+GTK4 apps, like Files, Text Editor and Calculator, report every element at `x: 0, y: 0`. Most buttons have actions and click fine by index. Rows without actions, like the Files sidebar, don't. An index click on one reports `ok: true` and lands at the wrong spot.
+
+`element_index` refers to the latest `get_app_state` only. After anything changes, look again before clicking by index.
+
+### Coordinates
+
+`click` always takes full-screen coordinates, even when you pass `window_id`. To click a spot read off a window screenshot:
+
+1. Divide by the screenshot's `scale`, if it isn't 1.
+2. Add the window's `bounds.x` and `bounds.y` from `list_windows`.
+
+For a window at `x: 238, y: 119`, the spot (60, 69) in its screenshot is (298, 188) on screen.
+
+If a look shows the GNOME Activities overview (shrunken windows and the dock), press `escape` before anything else. Every click misses while it's open.
 
 To wait, use `screenshot_after` or another look. Code-mode harnesses don't have `setTimeout`.
 
