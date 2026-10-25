@@ -14,7 +14,7 @@ A skill named `computer-use` that talks about `mcp__computer-use__*` tools is wr
 Work in small steps: one action, then look.
 
 1. Open an app with `App` in `launch` mode, using its Start Menu name. Bring an open one forward with `App` in `switch` mode.
-2. Look with `Snapshot`. It returns the focused window, the open windows and the interactive elements, with labels and coordinates. Use `Screenshot` only when you need to see pixels, such as images.
+2. Look with `Snapshot`. It returns the focused window, the open windows and the interactive elements, with labels and coordinates. Text that isn't interactive, like Calculator's result, can be missing from it. To read that, or to see images, call `Snapshot` with `use_vision: true` and a `region` around the area.
 3. Act with `Click`, `Type`, `Scroll` or `Shortcut`, using coordinates from the latest `Snapshot`.
 4. Look again before the next action. After a launch or navigation, `Wait` 2 to 5 seconds first, since a window can appear late.
 

@@ -13,11 +13,11 @@ A skill named `computer-use` that talks about `mcp__computer-use__*` tools is wr
 
 Work in small steps: one action, then look.
 
-1. Launch apps from the shell, detached: `setsid nautilus >/dev/null 2>&1 &`. The server has no launch tool, and typing an app name into the GNOME overview is unreliable.
+1. Launch apps from the shell through the user session: `systemd-run --user --collect --quiet nautilus`. This works even when the shell has no display variables. The server has no launch tool, and typing an app name into the GNOME overview is unreliable.
 2. Get the window with `list_windows` and keep its `window_id`. Pass `window_id` to every call after that.
 3. Look with `get_app_state` scoped to the window (`window_id` or `wm_class`). A call without a target returns the whole desktop tree and floods context.
 4. Act, and pass `screenshot_after: "window"` so the action returns its own fresh look.
-5. Check that look before the next action. A tool reporting `ok: true` means the input was sent, not that it landed.
+5. Check that look before the next action. A tool reporting `ok: true` means the input was sent, not that it landed. If the look shows no change, the screen may not have updated yet, so look once more before repeating the action.
 
 The task is done when the last look shows the state the user asked for.
 
