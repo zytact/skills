@@ -44,17 +44,16 @@ GTK4 apps, like Files, Text Editor and Calculator, report every element at `x: 0
 
 ### Coordinates
 
-`click` always takes full-screen coordinates, even when you pass `window_id`. To click a spot read off a window screenshot:
+To click a spot read off a window screenshot, pass `window_id`, `x`, `y` and `relative: true`. Divide the position by the screenshot's `scale` first, if it isn't 1.
 
-1. Divide by the screenshot's `scale`, if it isn't 1.
-2. Add the window's `bounds.x` and `bounds.y` from `list_windows`.
-
-For a window at `x: 238, y: 119`, the spot (60, 69) in its screenshot is (298, 188) on screen.
+Without `relative: true`, `x` and `y` are full-screen coordinates, even when you pass `window_id`. Use that only with a full-screen screenshot.
 
 If a look shows the GNOME Activities overview (shrunken windows and the dock), press `escape` before anything else. Every click misses while it's open.
 
 To wait, use `screenshot_after` or another look. Code-mode harnesses don't have `setTimeout`.
 
 ## When it breaks
+
+The harness owns the `computer-use-linux mcp` process. Leave every `computer-use-linux` process running, since killing one disconnects the tools for the rest of the session. If the tools are missing from your tool list, stop and tell the user.
 
 Run `computer-use-linux doctor | jq .readiness` in the shell. If `screenshot` fails with a portal timeout, GNOME is showing a permission prompt. Ask the user to click Allow, then retry.
