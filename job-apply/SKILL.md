@@ -1,6 +1,6 @@
 ---
 name: job-apply
-description: Find internships with is-dl and apply to them in a private browser that carries the user's logins, uploading a tailored resume, answering screening questions from the user's answer bank, and logging each submission in is-dl. Use when asked to apply to jobs, or when a scheduled application run fires.
+description: Find internships and entry-level jobs with is-dl and apply to them in a private browser that carries the user's logins, uploading a tailored resume, answering screening questions from the user's answer bank, and logging each submission in is-dl. Use when asked to apply to jobs, or when a scheduled application run fires.
 disable-model-invocation: true
 ---
 
@@ -76,8 +76,8 @@ A run the user starts by hand, and every trial, does not defer. Over the thresho
 ## Find
 
 ```bash
-is-dl search -k "<role> intern" --source linkedin -l "<location>" --remote-only \
-  --experience-level Internship --posted-within "Past week" --exclude-unpaid --exclude-applied --exclude-seen --json
+is-dl search -k "<role>" --source linkedin -l "<location>" --remote-only \
+  --experience-level "Internship,Entry level" --posted-within "Past week" --exclude-unpaid --exclude-applied --exclude-seen --json
 ```
 
 A search takes 2 to 5 minutes, sometimes more, and a full 50-listing run can take 50. Run each search as its own background job with a 2-hour timeout, and read its output file when the job finishes. A foreground or default-timeout job gets killed at 30 minutes and loses the listings it had collected.
@@ -107,7 +107,7 @@ Judge each listing by reading its description, as the is-dl skill describes. The
 - A named company. Skip a listing with no company name.
 - A real company hiring for its own product or clients. Skip internship mills: India-only outfits whose name is built around interning, skilling or mentoring (internmo, Skillzenloop, Unified Mentor), and listings that sell a "structured internship program" for freshers with a certificate, a performance-based "up to" stipend and the same template posted for many roles.
 
-Hours do not decide. Never skip a listing for a `Full-time` tag or for stated full-time hours; the user settles hours with the company after an offer. If a form asks about hours, answer from `answers.md`.
+Hours decide. Keep a listing when its hours fit the user's, as `answers.md` states them: flexible or async hours, part-time, or up to about 40 hours a week. Skip it when it needs more, or fixed working hours during the user's weekday classes. A listing that states no hours, or only says `Full-time`, stays in. If a form asks about hours or a start date, answer from `answers.md`.
 
 Fewer good listings than the limit is fine. Never pad.
 
