@@ -1,12 +1,12 @@
 ---
 name: is-dl
-description: Drive the is-dl CLI to scrape LinkedIn and Unstop listings, filter out unpaid roles and ones already applied to or already shown, judge fit by reading descriptions, keep the documents and notes attached to a job, and build a tailored one-page resume PDF. Use when asked to find jobs or internships, triage scraped listings, save a hiring doc or note about a role, log an application, or build a resume variant.
+description: Drive the is-dl CLI to scrape LinkedIn, Unstop and Y Combinator listings, filter out unpaid roles and ones already applied to or already shown, judge fit by reading descriptions, keep the documents and notes attached to a job, and build a tailored one-page resume PDF. Use when asked to find jobs or internships, triage scraped listings, save a hiring doc or note about a role, log an application, or build a resume variant.
 disable-model-invocation: true
 ---
 
 # is-dl
 
-`is-dl` searches LinkedIn and Unstop, filters listings on facts, tracks what has been applied to, keeps the text attached to a job, and builds tailored resume PDFs. It never submits an application. Search, filter, log, build a PDF. A human presses send.
+`is-dl` searches LinkedIn, Unstop and Y Combinator, filters listings on facts, tracks what has been applied to, keeps the text attached to a job, and builds tailored resume PDFs. It never submits an application. Search, filter, log, build a PDF. A human presses send.
 
 Every command takes `--json`, which puts one JSON document on stdout and all logs on stderr. Always pass it. Parse stdout only.
 
@@ -32,9 +32,9 @@ Run `is-dl doctor --json` first if anything looks wrong. It reports node, playwr
 
 ## Sources
 
-`search` queries LinkedIn and Unstop together by default. `--source linkedin`, `--source unstop` or a comma-separated subset scopes it.
+`search` queries LinkedIn, Unstop and Y Combinator together by default. `--source linkedin`, `--source unstop`, `--source ycombinator` or a comma-separated subset scopes it.
 
-**Exit 0 does not mean every source ran.** One board failing is normal rather than an error: LinkedIn needs a stored session, Unstop needs none, so a machine that never ran `is-dl login` still returns Unstop results and exits 0. Read `meta.sources[]` before trusting a count.
+**Exit 0 does not mean every source ran.** One board failing is normal rather than an error: LinkedIn needs a stored session, Unstop and Y Combinator need none, so a machine that never ran `is-dl login` still returns Unstop results and exits 0. Read `meta.sources[]` before trusting a count.
 
 ```json
 "sources": [
@@ -62,6 +62,19 @@ is-dl search -k developer --source unstop \
 `--unstop-opportunity` picks the corpus: `jobs`, `internships`, `hackathons`, `competitions`. They are separate sets rather than filters over one set, and student roles concentrate in `internships`.
 
 The live corpus carries test listings, for example rows titled "DO NOT REGISTER" from "Unstop Testing". Drop them.
+
+### Y Combinator
+
+No auth, no browser. One request per role page plus one per returned job.
+
+Keywords are ignored. `--ycombinator-roles` picks the category pages, `software-engineer` by default; each page has about 35 listings and no further pages. The other filters run on fields each listing publishes: `--job-type` against its type, `--remote-only` and `-l` against its location, `--ycombinator-max-experience <years>` against its minimum experience, and `--ycombinator-skip-us-only` against its visa field. `--remote-only` reads the role's own remote page, which is a different set.
+
+```bash
+is-dl search -k software --source ycombinator --remote-only --ycombinator-skip-us-only \
+  --ycombinator-max-experience 1 --json
+```
+
+A job carries `companyName`, `locationText`, `descriptionText`, `requirementsText` (experience, visa, skills, batch) and `applyUrl`. Applying through `applyUrl` needs a signed-in Work at a Startup account. Most listings are `Full-time` with a US salary range in `pay.amount`. A role page with no `data-page` or `jobPostings` fails the source with `Y Combinator may have changed its page format.`
 
 ## Finding listings
 
