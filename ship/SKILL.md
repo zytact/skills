@@ -1,12 +1,12 @@
 ---
 name: ship
-description: Take a task from implementation to a filed PR, with code review, a verification-skill audit and live verification on the way.
+description: Take a task from implementation to a filed PR, with code review, a verification-skill audit and live verification on the way, then merge it when the merge gate passes.
 disable-model-invocation: true
 ---
 
 # Ship
 
-Take the task passed to `/ship` from code to one filed PR: implement or fix it, review it, prove it live, then file. Each step below ends on its completion criterion. Move to the next step only once it holds.
+Take the task passed to `/ship` from code to one filed PR: implement or fix it, review it, prove it live, file, then merge if the gate passes. Each step below ends on its completion criterion. Move to the next step only once it holds.
 
 ## 0. Locate the verification skill
 
@@ -26,6 +26,8 @@ Done when the change does what the task asks and the project's own checks (typec
 
 Invoke the `code-review` skill with the merge-base against the default branch as the fixed point. Fix every confirmed finding, or record why it stays.
 
+The `code-review` skill allows 3 runs per branch. Once they are spent, fixes from steps 3 and 4 go in without another review, and the report lists them as unreviewed.
+
 Done when every confirmed finding is fixed or has a recorded reason.
 
 ## 3. Maintain the verification skill
@@ -35,7 +37,7 @@ Done when every confirmed finding is fixed or has a recorded reason.
 - Scope the source read, live pass and missing-surface sweep to the features this branch adds or changes. Leave other features alone. Index hygiene still covers the whole map. If the map lacks a feature this branch adds, add it.
 - `clean` and `changed` mean every in-scope feature got source and live coverage.
 - Its corrections ride in this branch as their own commit. It files no PR of its own.
-- A product gap caused by this branch's change gets fixed in the code, then goes back through step 2. Any other product gap goes to the final report.
+- A product gap caused by this branch's change gets fixed in the code, then goes back through step 2. Any other product gap is a pre-existing issue. Handle it as step 7 says.
 
 Done when the pass reaches its `clean` or `changed` outcome. A `blocked` outcome stops the ship: report the blocker.
 
@@ -53,6 +55,26 @@ Invoke the `file-pr` skill. Attach the before and after evidence.
 
 Done when the PR is open and shows the uploaded evidence.
 
+## 6. Merge
+
+Wait for the PR's checks to finish (`gh pr checks --watch`). Many repos have no branch protection, so GitHub will merge a PR with failing or missing checks. Enforce the gate yourself. Merge the PR only when all of these hold:
+
+- The PR has checks, and every one is green. A repo with no CI fails this gate unless the project's own checks from step 1 pass on the final branch.
+- Every confirmed review finding is fixed, or its recorded reason would convince a maintainer. No fix is unreviewed.
+- Every changed behavior passed live in step 4.
+- No review comment on the PR is unresolved.
+- Reading the full diff once more, you are confident it is correct and ready.
+
+Merge with the method the repo uses, judged from recent merged PRs, and delete the branch. If any condition fails, leave the PR open.
+
+Done when the PR is merged, or left open with the failed condition named.
+
+## 7. File pre-existing issues
+
+Problems found along the way that this branch did not cause, such as product gaps, failing checks or bugs already on the default branch, go to GitHub as issues. Confirm each one reproduces on the default branch, and search open issues first so you do not file a duplicate. Give each issue the steps to reproduce and the evidence you have. Do not fix them in this branch.
+
+Done when every pre-existing problem has an issue, new or already open.
+
 ## Report
 
-End with the PR URL, review findings left unfixed and why, the maintain outcome, the behaviors verified live, and any product gaps found outside this change.
+End with the PR URL, whether it merged or which merge condition failed, review findings left unfixed and why, fixes left unreviewed, the maintain outcome, the behaviors verified live, and the issues filed or found for pre-existing problems.
