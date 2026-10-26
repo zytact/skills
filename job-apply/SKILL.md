@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Job apply
 
-One run finds fresh listings with is-dl, applies to up to 5 of them, and logs each one. The user is only needed when a form asks for something you cannot answer from what you have.
+One run finds fresh listings with is-dl, applies to up to 5 of them, and logs each one. The user is only needed to approve drafts and when a form asks for something you cannot answer from what you have.
 
 This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL.md`) before the first command. Its rules hold here, above all that a resume only selects bullets and never gains a sentence. One rule is overridden: is-dl says a human presses send. Here you submit and log, except in a trial.
 
@@ -70,7 +70,7 @@ A run the user starts by hand, and every trial, does not defer. Over the thresho
 1. On a scheduled run, the usage gate. If it trips, do nothing else.
 2. `is-dl doctor --json`. Exit 3 means the is-dl LinkedIn session expired: stop and tell the user to run `is-dl login`.
 3. Read `~/.config/is-dl/answers.md`. It holds every fact you may put in a form. The phone number is in `$APPLICANT_PHONE`. If either is missing, set it up as "First run on a machine" says.
-4. Read `~/.local/state/job-apply/pending.json` if it exists. Apply first to its `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. A `drafted` job waits for the user; see Y Combinator drafts. Never reopen an `interrupted` job; see Log.
+4. Read `~/.local/state/job-apply/pending.json` if it exists. Apply first to its `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. A `drafted` job waits for the user; see Drafts. Never reopen an `interrupted` job; see Log.
 5. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". If it is signed out, stop and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
 
 ## Find
@@ -118,14 +118,15 @@ Fewer good listings than the limit is fine. Never pad.
 For each kept listing, one at a time:
 
 1. Add a variant to `variants.yaml` named `<company>-<role>`, by copying an existing block and changing only `headline`, `lead` and `drop`. Build it with `is-dl resume build --variant <name> --json` and take the PDF path from its output. Fix overflow by dropping bullets, as the is-dl skill says.
-2. `open` the listing and `snapshot`. For a Y Combinator job, `open` `https://www.workatastartup.com/jobs/<jobId>` instead. Its `applyUrl` only leads to the profile wizard.
-3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, stop on this job. On a Y Combinator job page, a signed-in user's name shows next to "My profile". If the page shows "Sign in" there instead, stop on every Y Combinator job this run and tell the user to sign in to workatastartup.com in Helium. Snapshots miss its Apply link, so click it with `eval`: the `a` element whose text is exactly `Apply`. It opens a dialog with one message to the founder, at least 50 characters, and a Send button. Write 2 or 3 sentences from `resume.yaml` and the listing: who the user is, the most relevant thing they built, and when they can start. When the dialog says the qualifications might not match, re-check the listing against the keep rules and go ahead if it still passes. Never click Send on a run; see Y Combinator drafts. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
+2. `open` the listing and `snapshot`. For a Y Combinator job, `open` `https://www.workatastartup.com/jobs/<jobId>` instead. Its `applyUrl` only leads to the profile wizard. A LinkedIn listing whose Apply goes to `ycombinator.com` or `workatastartup.com` is a Y Combinator job too: find the role on the company's page (`https://www.ycombinator.com/companies/<slug>`, its `jobPostings` in the `data-page` JSON) and continue with its `id` as the `jobId` and `source` set to `ycombinator`. If the role is not there, it has closed; reject it. When a queued job's listing has closed, look on LinkedIn for a repost by the same company with the same role. If there is one, apply there and replace the old `jobId` in its entry. If not, reject the job.
+3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, stop on this job. On a Y Combinator job page, a signed-in user's name shows next to "My profile". If the page shows "Sign in" there instead, stop on every Y Combinator job this run and tell the user to sign in to workatastartup.com in Helium. Snapshots miss its Apply link, so click it with `eval`: the `a` element whose text is exactly `Apply`. It opens a dialog with one message to the founder, at least 50 characters, and a Send button. Write the message as Drafts describes. When the dialog says the qualifications might not match, re-check the listing against the keep rules and go ahead if it still passes. Never click Send on a run; see Drafts. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
 4. Fill the form:
    - Contact fields and screening questions come from `answers.md`. Copy the facts. Do not round, stretch or guess. Where `answers.md` and `resume.yaml` disagree, `answers.md` wins in forms. Never edit `resume.yaml` to match.
+   - `$APPLICANT_PHONE` already starts with `+91`. When the form has its own country code field, pick India there and enter the number without `+91`.
    - Upload the built PDF. On LinkedIn, click "Upload resume" first so the file input exists, then `upload`. Snapshot and check the new file's radio is the selected one.
    - Years of experience with a skill: count only what the resume shows. Coursework and personal projects count as under one year. A field that only takes a number gets whole completed years, so `0` for under one year. LinkedIn prefills these from past applications; overwrite every prefilled answer with what the resume shows.
    - Uncheck "Follow company" and any other prechecked box that is not part of the application.
-   - Short free-text answers, up to about 3 sentences, you write yourself from facts in `resume.yaml` and the listing. Never claim anything the resume does not show.
+   - Short free-text answers, up to about 3 sentences, you write yourself from facts in `resume.yaml` and the listing. Never claim anything the resume does not show. A longer one, such as "explain the projects you have done", you draft for the user; see Drafts.
    - Easy Apply runs over several pages. Fill, click Next or Review, snapshot, repeat.
 5. On the last page before submit, snapshot and check every field against what you meant to send.
 6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. If nothing confirms within 60 seconds, do not resubmit. If the page loads a captcha script (`eval` for a `script[src]` containing `recaptcha`, `hcaptcha` or `turnstile`), the captcha most likely rejected it. Stop on the job and ask the user to apply by hand. Otherwise mark the job `interrupted`, as Log describes.
@@ -140,7 +141,7 @@ When the user's prompt says this is a trial, stop at step 5 for every job instea
 
 Stop on a job and move to the next one when it needs any of these:
 
-- A cover letter, or a free-text answer longer than about 3 sentences.
+- A cover letter.
 - A question whose answer is not in `answers.md` and not in the resume.
 - Something personal: health, disability, family, salary history, references, or anything you would not say on the user's behalf.
 - A new account, an assessment, a test, a video, a payment, or joining a group or community such as WhatsApp.
@@ -151,17 +152,26 @@ Record it in `pending.json` with the exact question and a link. At the end of th
 
 When the user answers, add each reusable fact under "Learned answers" in `answers.md` in their words, so the same question never reaches them twice. A cover letter is not a reusable fact.
 
-### Y Combinator drafts
+### Drafts
 
-A Y Combinator application is the founder message alone; the founder sees the resume on the user's Work at a Startup profile. So skip the variant build and the upload for these jobs.
+The user approves two kinds of text before it goes out: every Y Combinator founder message, and any form answer longer than about 3 sentences. Draft it, do not send it, and record the job in `pending.json` as `drafted` with the `message`, plus the form's `question` for a form answer. It counts toward the run's 5.
 
-Write the message, close the dialog without sending, and record the job in `pending.json` as `drafted` with the `message`. It counts toward the run's 5. The report shows each draft word for word.
+A Y Combinator application is the founder message alone; the founder sees the resume on the user's Work at a Startup profile. So skip the variant build and the upload for these jobs. Close the dialog without sending. For a form answer, fill the rest of the form but do not submit it.
 
-When the user replies to a report about its drafts, act on the reply right away instead of waiting for the next run. For each draft they approve, with their changes applied: open the job page, click Apply, fill the message, click Send, confirm the dialog closed and the page shows the application as sent, then log it as below. A draft the user rejects is removed from the file. A draft the user has not answered stays as it is.
+Write 4 to 6 sentences, about 80 to 120 words:
+
+- Who the user is, from `resume.yaml`.
+- Why this company: one specific thing from the listing or the company's page, such as its product, its problem or how the role works, tied to something the user has built or cares about. A sentence that would fit any company does not count.
+- The most relevant thing the user built, told so it connects to that reason.
+- When they can start, and relocation or visa needs when the role is on-site.
+
+Claim only what `resume.yaml` and `answers.md` show. For a form answer, answer the question that is asked, with the same facts.
+
+When the user replies to a report about its drafts, act on the reply right away instead of waiting for the next run. For each draft they approve, with their changes applied: open the job page, fill the form again by the rules above with the approved text, submit or Send, confirm the page shows the application as sent, then log it as below. A draft the user rejects is removed from the file. A draft the user has not answered stays as it is.
 
 ## Log
 
-`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `source`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped`, `drafted` or `interrupted`), `question` when stopped, `message` when drafted, and `sent` when interrupted: the site and every field you submitted. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`). A stopped job keeps its variant.
+`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `source`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped`, `drafted` or `interrupted`), `question` when stopped or drafted for a form answer, `message` when drafted, and `sent` when interrupted: the site and every field you submitted. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`). A stopped job keeps its variant.
 
 An interrupted job may have gone through, so no run submits it again, and it does not count toward a run's 5. It stays in the file until the user says what happened. If it went through, log it as below from its `sent` and remove the entry. If it did not, set it back to `queued`.
 
@@ -189,7 +199,7 @@ End every run with:
 
 - Each application: company, role, link, variant, and any answer you wrote yourself.
 - Each stopped job and what it needs from the user.
-- Each drafted Y Combinator job, from every run so far: company, role, link and the message word for word. Ask the user to approve or change each one.
+- Each drafted job, from every run so far: company, role, the question for a form answer, and the draft word for word. Ask the user to approve or change each one. Above each draft, so the user can judge the company, put 2 or 3 sentences on what it does, with its stage, funding or size when stated, and links to the job, the company's website and its LinkedIn page. For a Y Combinator company, fetch `https://www.ycombinator.com/companies/<slug>` with `curl`; its `data-page` JSON has `one_liner`, `website` and `linkedin_url`. For a LinkedIn job, use the company link on the listing and the website its page states.
 - Each interrupted job, from every run so far: link and what was sent. Ask whether it went through.
 - Listings you rejected, with one line each on why.
 - How many of the run's 5 you applied to.
