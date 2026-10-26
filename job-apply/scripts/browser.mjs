@@ -3,6 +3,8 @@
 // The browser runs on a copy of the user's main Helium profile, so it carries their
 // logins without touching the running browser. It runs in a real window on a virtual
 // X display, since sites' captchas reject headless browsers. Every command prints one JSON line.
+// With JOB_BROWSER_VISIBLE=1, every command drives a second copy whose window opens on the
+// user's screen instead, so the user can finish a form by hand while runs keep the hidden one.
 //
 //   start                 sync the profile copy (if stopped) and launch the browser
 //   stop                  quit the browser
@@ -19,15 +21,16 @@
 //   shot                  save a screenshot, print its path
 //   close                 close the current tab
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const BROWSER = process.env.JOB_BROWSER ?? '/opt/helium/helium';
 const SOURCE = process.env.JOB_BROWSER_SOURCE ?? join(homedir(), '.config/net.imput.helium');
 const STATE = join(homedir(), '.local/state/job-apply');
-const PROFILE = join(STATE, 'helium-profile');
-const TAB_FILE = join(STATE, 'tab');
+const VISIBLE = process.env.JOB_BROWSER_VISIBLE === '1';
+const PROFILE = join(STATE, VISIBLE ? 'helium-visible' : 'helium-profile');
+const TAB_FILE = join(STATE, VISIBLE ? 'tab-visible' : 'tab');
 const SHOTS = join(STATE, 'shots');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -136,6 +139,15 @@ function syncProfile() {
   if (rsync.status !== 0) fail(`Profile sync failed: ${rsync.stderr}`);
 }
 
+/** The user's Wayland socket. Agent shells often lack WAYLAND_DISPLAY, so fall back to the runtime dir. */
+function waylandDisplay() {
+  if (process.env.WAYLAND_DISPLAY) return process.env.WAYLAND_DISPLAY;
+  const runtime = process.env.XDG_RUNTIME_DIR ?? `/run/user/${process.getuid()}`;
+  const socket = existsSync(runtime) && readdirSync(runtime).find((name) => /^wayland-\d+$/.test(name));
+  if (!socket) fail('No Wayland display found for the visible browser.');
+  return socket;
+}
+
 const element = (ref) => `document.querySelector('[data-ja-ref="${Number(ref)}"]')`;
 
 /** Runs in the page: numbers visible form elements and returns them with readable text. */
@@ -200,15 +212,14 @@ const commands = {
     if (url && (await connect(url).then((c) => (c.close(), true)).catch(() => false))) {
       return out({ ok: true, running: true });
     }
-    if (spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
+    const flags = [`--user-data-dir=${PROFILE}`, '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'];
+    if (!VISIBLE && spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
     syncProfile();
-    // Without WAYLAND_DISPLAY and with ozone on x11, the window opens on Xvfb, never on the user's screen.
+    // Without WAYLAND_DISPLAY and with ozone on x11, the hidden window opens on Xvfb, never on the user's screen.
     const { WAYLAND_DISPLAY, ...env } = process.env;
-    const child = spawn(
-      'xvfb-run',
-      ['-a', '-s', '-screen 0 1280x900x24', BROWSER, `--user-data-dir=${PROFILE}`, '--ozone-platform=x11', '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'],
-      { detached: true, stdio: 'ignore', env },
-    );
+    const child = VISIBLE
+      ? spawn(BROWSER, ['--ozone-platform=wayland', ...flags], { detached: true, stdio: 'ignore', env: { ...env, WAYLAND_DISPLAY: waylandDisplay() } })
+      : spawn('xvfb-run', ['-a', '-s', '-screen 0 1280x900x24', BROWSER, '--ozone-platform=x11', ...flags], { detached: true, stdio: 'ignore', env });
     child.unref();
     for (let i = 0; i < 60 && !endpoint(); i++) await sleep(250);
     if (!endpoint()) fail('Browser did not start.');

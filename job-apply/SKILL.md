@@ -32,6 +32,8 @@ node $B close
 node $B stop
 ```
 
+Prefix any command with `JOB_BROWSER_VISIBLE=1` to drive a second private copy whose window opens on the user's screen. It has its own profile copy and tabs, so it never collides with the hidden one. Use it only for a captcha handoff.
+
 Refs come from the latest snapshot. Take a new one after every click that changes the page. A typeahead field, such as a city, wants you to fill it, snapshot, and click a suggestion. When a form sits in an iframe, `eval` its `src` and `goto` it.
 
 A LinkedIn listing loads its description late. Wait about 6 seconds after `open`, click "… more" if the description shows one, then snapshot with `--all`.
@@ -128,12 +130,21 @@ For each kept listing, one at a time:
    - Uncheck "Follow company" and any other prechecked box that is not part of the application.
    - Short free-text answers, up to about 3 sentences, you write yourself from facts in `resume.yaml` and the listing. Never claim anything the resume does not show. A longer one, such as "explain the projects you have done", you draft for the user; see Drafts.
    - Easy Apply runs over several pages. Fill, click Next or Review, snapshot, repeat.
-5. On the last page before submit, snapshot and check every field against what you meant to send.
-6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. If nothing confirms within 60 seconds, do not resubmit. If the page loads a captcha script (`eval` for a `script[src]` containing `recaptcha`, `hcaptcha` or `turnstile`), the captcha most likely rejected it. Stop on the job and ask the user to apply by hand. Otherwise mark the job `interrupted`, as Log describes.
+5. On the last page before submit, snapshot and check every field against what you meant to send. If it shows a captcha, such as an "I'm not a robot" checkbox or a puzzle, do not submit. Stop on the job for a captcha handoff.
+6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. If nothing confirms within 60 seconds, do not resubmit. If the page loads a captcha script (`eval` for a `script[src]` containing `recaptcha`, `hcaptcha` or `turnstile`), the captcha most likely rejected it. Stop on the job for a captcha handoff. Otherwise mark the job `interrupted`, as Log describes.
 7. Log it, as described below.
 8. `close` the tab. On a scheduled run, run the usage gate before the next listing, then wait 3 to 6 minutes.
 
-`node $B stop` when the run ends.
+`node $B stop` when the run ends. Leave a visible browser alone; it is the user's until they say they are done.
+
+### Scripts
+
+Write a script when it saves work, in one of two places:
+
+- `/tmp/job-apply/` for a one-off: anything tied to one job or this run. It may be gone by the next run.
+- `~/.local/share/job-apply/scripts/` for a script future runs will reuse. It must take every job-specific value as an argument. List it in that folder's `README.md`, one line on what it does and its usage, and keep that line current when you change it.
+
+Read that `README.md` before writing a new script, and use or improve a script it lists instead of writing a second one. The report names every script you added or changed there.
 
 When the user's prompt says this is a trial, stop at step 5 for every job instead. Show a `shot`, list what you filled in, and wait for the user to say submit. Keep the tab open and the browser running while you wait.
 
@@ -146,9 +157,13 @@ Stop on a job and move to the next one when it needs any of these:
 - Something personal: health, disability, family, salary history, references, or anything you would not say on the user's behalf.
 - A new account, an assessment, a test, a video, a payment, or joining a group or community such as WhatsApp.
 - An email-only application.
-- A captcha or security check. Do not retry it.
+- A captcha or security check. Do not retry it, and never try to solve one. Record every field you filled and its value in the entry's `question`, starting with `Captcha:`, so the job can be handed off.
 
 Record it in `pending.json` with the exact question and a link. At the end of the run, list each stopped job.
+
+#### Captcha handoff
+
+When the user asks for a stopped captcha job, open it for them in the visible browser: run `start`, `open`, and every fill with `JOB_BROWSER_VISIBLE=1`, using the values recorded in its entry. Leave the tab on the last page with the captcha unsolved and nothing submitted, and tell the user it is ready. They solve the captcha and submit. When they say it is done, `snapshot` that tab, confirm the page says the application was sent, log it as below, then `stop` the visible browser. If they close the window without submitting, the job stays stopped.
 
 When the user answers, add each reusable fact under "Learned answers" in `answers.md` in their words, so the same question never reaches them twice. A cover letter is not a reusable fact.
 
@@ -203,4 +218,5 @@ End every run with:
 - Each interrupted job, from every run so far: link and what was sent. Ask whether it went through.
 - Listings you rejected, with one line each on why.
 - How many of the run's 5 you applied to.
+- Each script you added to or changed in `~/.local/share/job-apply/scripts/`.
 - When the usage gate deferred the run: the utilization, the reset time, and when the continuation fires.
