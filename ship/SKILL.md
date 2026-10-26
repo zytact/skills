@@ -59,7 +59,7 @@ Done when the PR is open and shows the uploaded evidence.
 
 Call T3 Code's `watch_pull_request` on the PR and end your turn. T3 wakes you when a check fails, checks pass, a comment or review lands, or the PR conflicts. A wake is news, not a merge decision. Outside T3 Code, wait with `gh pr checks --watch` and then read the comments.
 
-The repo's review bots are the ones that commented on its recent PRs, such as CodeRabbit, Copilot or Greptile. A bot that skips the review, even with a green status, has not reviewed. Ask it for one, such as commenting `@coderabbitai review`. A repo with no CI and no review bots has nothing to wait for, so go straight to the gate.
+The repo's review bots are the ones that reviewed its recent merged PRs, such as CodeRabbit, Copilot or Greptile. A repo with no CI and no review bots has nothing to wait for, so go straight to the gate.
 
 On each wake, read the full state with `gh pr checks` and `gh pr view --comments`, then act on it:
 
