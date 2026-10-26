@@ -10,6 +10,8 @@ Review the diff between `HEAD` and a fixed point supplied by the user along two 
 
 One finder sub-agent reviews both axes in separate passes.
 
+Review one branch at most 3 times in a task. Every fix-and-review cycle counts as a run. If this would be the fourth run, do not review. Tell the caller the limit is reached, and let it report the fixes made since the last run as unreviewed.
+
 
 ## Process
 
