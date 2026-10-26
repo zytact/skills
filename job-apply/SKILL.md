@@ -180,7 +180,7 @@ Write 4 to 6 sentences, about 80 to 120 words:
 - The most relevant thing the user built, told so it connects to that reason.
 - When they can start, and relocation or visa needs when the role is on-site.
 
-Claim only what `resume.yaml` and `answers.md` show. For a form answer, answer the question that is asked, with the same facts.
+Claim only what `resume.yaml` and `answers.md` show. For a form answer, answer the question that is asked, with the same facts. Write it in the user's voice, as `~/.config/is-dl/voice.md` describes, when that file exists. Its beliefs and stories may supply the reason and the framing, never a fact the resume lacks.
 
 When the user replies to a report about its drafts, act on the reply right away instead of waiting for the next run. For each draft they approve, with their changes applied: open the job page, fill the form again by the rules above with the approved text, submit or Send, confirm the page shows the application as sent, then log it as below. A draft the user rejects is removed from the file. A draft the user has not answered stays as it is.
 
