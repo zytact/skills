@@ -57,17 +57,28 @@ Done when the PR is open and shows the uploaded evidence.
 
 ## 6. Merge
 
-Wait for the PR's checks to finish (`gh pr checks --watch`). Many repos have no branch protection, so GitHub will merge a PR with failing or missing checks. Enforce the gate yourself. Merge the PR only when all of these hold:
+Call T3 Code's `watch_pull_request` on the PR and end your turn. T3 wakes you when a check fails, checks pass, a comment or review lands, or the PR conflicts. A wake is news, not a merge decision. Outside T3 Code, wait with `gh pr checks --watch` and then read the comments.
+
+The repo's review bots are the ones that commented on its recent PRs, such as CodeRabbit, Copilot or Greptile. A bot that skips the review, even with a green status, has not reviewed. Ask it for one, such as commenting `@coderabbitai review`. A repo with no CI and no review bots has nothing to wait for, so go straight to the gate.
+
+On each wake, read the full state with `gh pr checks` and `gh pr view --comments`, then act on it:
+
+- A failed check, a conflict or a review comment: fix it, send the fix through step 2 and push, or reply with the reason it stays. Resolve the thread. The watch stays on, so end the turn.
+- Checks still pending, or a review bot has not reviewed the latest push: end the turn.
+- Otherwise, judge the gate.
+
+Many repos have no branch protection, so GitHub will merge a PR with failing or missing checks. Enforce the gate yourself. Merge the PR only when all of these hold:
 
 - The PR has checks, and every one is green. A repo with no CI fails this gate unless the project's own checks from step 1 pass on the final branch.
+- Every review bot the repo uses has reviewed the latest push.
 - Every confirmed review finding is fixed, or its recorded reason would convince a maintainer. No fix is unreviewed.
 - Every changed behavior passed live in step 4.
 - No review comment on the PR is unresolved.
 - Reading the full diff once more, you are confident it is correct and ready.
 
-Merge with the method the repo uses, judged from recent merged PRs, and delete the branch. If any condition fails, leave the PR open.
+Merge with the method the repo uses, judged from recent merged PRs, and delete the branch. If a condition fails and nothing on the branch can fix it, leave the PR open. Either way, call `unwatch_pull_request`.
 
-Done when the PR is merged, or left open with the failed condition named.
+Done when the PR is merged, or left open with the failed condition named, and the watch is off.
 
 ## 7. File pre-existing issues
 
