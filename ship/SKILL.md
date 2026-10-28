@@ -82,9 +82,9 @@ Done when the PR is merged, or left open with the failed condition named, and th
 
 ## 7. File pre-existing issues
 
-Problems found along the way that this branch did not cause, such as product gaps, failing checks or bugs already on the default branch, go to GitHub as issues. Confirm each one reproduces on the default branch, and search open issues first so you do not file a duplicate. Give each issue the steps to reproduce and the evidence you have. Do not fix them in this branch.
+Problems found along the way that this branch did not cause, such as product gaps, failing checks or bugs already on the default branch, go to GitHub as issues. Confirm each one reproduces on the default branch, and search open issues first so you do not file a duplicate. Give each issue the steps to reproduce and the evidence you have, and label it with every fitting label from `gh label list`, such as `bug` or `enhancement`. Do not fix them in this branch.
 
-Done when every pre-existing problem has an issue, new or already open.
+Done when every pre-existing problem has a labeled issue, new or already open.
 
 ## Report
 
