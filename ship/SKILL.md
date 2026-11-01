@@ -26,7 +26,7 @@ Done when the change does what the task asks and the project's own checks (typec
 
 Invoke the `code-review` skill with the merge-base against the default branch as the fixed point. Fix every confirmed finding, or record why it stays.
 
-The `code-review` skill allows 3 runs per branch. Once they are spent, fixes from steps 3 and 4 go in without another review, and the report lists them as unreviewed.
+The `code-review` skill allows 3 runs per PR, counting runs from before the PR is filed. Once they are spent, later fixes, including those from steps 3, 4 and 6, go in without another review, and the report lists them as unreviewed.
 
 Done when every confirmed finding is fixed or has a recorded reason.
 
