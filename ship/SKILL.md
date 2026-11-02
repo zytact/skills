@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Ship
 
-Take the task passed to `/ship` from code to one filed PR: implement or fix it, review it, prove it live, file, then merge if the gate passes. Each step below ends on its completion criterion. Move to the next step only once it holds.
+Take the task passed to `/ship` from code to filed PRs, one or a stack: implement or fix it, review it, prove it live, file, then merge if the gate passes. Each step below ends on its completion criterion. Move to the next step only once it holds.
 
 ## 0. Locate the verification skill
 
@@ -18,13 +18,15 @@ Done when the target verification skill is named and the "before" evidence exist
 
 ## 1. Implement
 
-Branch off the default branch, then implement or fix the task.
+Decide the shape first. If the work will run past about 600 changed lines and splits into parts that each make sense on their own, plan it as a stack with the `gh-stack` skill and create the stack before writing files. Otherwise, branch off the default branch. Then implement or fix the task.
 
-Done when the change does what the task asks and the project's own checks (typecheck, lint, tests) pass.
+In a stack, every later step covers every layer, and "this branch" means the whole stack.
+
+Done when the change does what the task asks and the project's own checks (typecheck, lint, tests) pass on every branch.
 
 ## 2. Review
 
-Invoke the `code-review` skill with the merge-base against the default branch as the fixed point. Fix every confirmed finding, or record why it stays.
+Invoke the `code-review` skill with the merge-base against the default branch as the fixed point. In a stack, review each layer on its own, with the layer below it as the fixed point. Fix every confirmed finding, or record why it stays.
 
 The `code-review` skill allows 3 runs per PR, counting runs from before the PR is filed. Once they are spent, later fixes, including those from steps 3, 4 and 6, go in without another review, and the report lists them as unreviewed.
 
@@ -51,13 +53,13 @@ Done when every changed behavior passed live and its evidence exists.
 
 ## 5. File the PR
 
-Invoke the `file-pr` skill. Attach the before and after evidence.
+Invoke the `file-pr` skill. Attach the before and after evidence. In a stack, open every layer's PR with `gh stack submit --auto --open`, then give each one its title and description per `file-pr`, with the evidence on the layer whose change it shows.
 
-Done when the PR is open and shows the uploaded evidence.
+Done when every PR is open and shows its uploaded evidence.
 
 ## 6. Merge
 
-Call T3 Code's `watch_pull_request` on the PR and end your turn. T3 wakes you when a check fails, checks pass, a comment or review lands, or the PR conflicts. A wake is news, not a merge decision. Outside T3 Code, wait with `gh pr checks --watch` and then read the comments.
+Call T3 Code's `watch_pull_request` on every PR and end your turn. T3 wakes you when a check fails, checks pass, a comment or review lands, or the PR conflicts. A wake is news, not a merge decision. Outside T3 Code, wait with `gh pr checks --watch` and then read the comments.
 
 The repo's review bots are the ones that reviewed its recent merged PRs, such as CodeRabbit, Copilot or Greptile. A repo with no CI and no review bots has nothing to wait for, so go straight to the gate.
 
@@ -76,7 +78,7 @@ Many repos have no branch protection, so GitHub will merge a PR with failing or 
 - No review comment on the PR is unresolved.
 - Reading the full diff once more, you are confident it is correct and ready.
 
-Merge with the method the repo uses, judged from recent merged PRs, and delete the branch. If a condition fails and nothing on the branch can fix it, leave the PR open. Either way, call `unwatch_pull_request`.
+Merge with the method the repo uses, judged from recent merged PRs, and delete the branch. In a stack, the gate must hold for every layer, and `gh stack merge <top PR> --yes` merges them bottom-up. If a condition fails and nothing on the branch can fix it, leave the PR open. Either way, call `unwatch_pull_request`.
 
 Done when the PR is merged, or left open with the failed condition named, and the watch is off.
 
@@ -88,4 +90,4 @@ Done when every pre-existing problem has a labeled issue, new or already open.
 
 ## Report
 
-End with the PR URL, whether it merged or which merge condition failed, review findings left unfixed and why, fixes left unreviewed, the maintain outcome, the behaviors verified live, and the issues filed or found for pre-existing problems.
+End with the PR URLs, whether it merged or which merge condition failed, review findings left unfixed and why, fixes left unreviewed, the maintain outcome, the behaviors verified live, and the issues filed or found for pre-existing problems.
