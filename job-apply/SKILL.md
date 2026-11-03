@@ -141,7 +141,7 @@ For each kept listing, one at a time:
 
 Write a script when it saves work, in one of two places:
 
-- `/tmp/job-apply/` for a one-off: anything tied to one job or this run. It may be gone by the next run.
+- The session's scratchpad folder for a one-off: anything tied to one job or this run. Use `/tmp/job-apply/` when the session gives no scratchpad. Either may be gone by the next run.
 - `~/.local/share/job-apply/scripts/` for a script future runs will reuse. It must take every job-specific value as an argument. List it in that folder's `README.md`, one line on what it does and its usage, and keep that line current when you change it.
 
 Read that `README.md` before writing a new script, and use or improve a script it lists instead of writing a second one. The report names every script you added or changed there.
