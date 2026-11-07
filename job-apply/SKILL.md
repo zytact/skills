@@ -107,7 +107,7 @@ Judge each listing by reading its description, as the is-dl skill describes. The
 - Paid or pay unstated. An internship counts when its stated pay is at least INR 5,000 a month, including "up to", performance-based and incentive stipends. A job that is not an internship (contract, full-time) counts at INR 40,000 a month or more in base pay, or INR 8 LPA or more in CTC. Indian listings often quote CTC; never read a CTC as base pay unless the listing says so. Unpaid and smaller amounts are out.
 - A fit for the resume. Skip roles that need years of experience, or a language or field the resume does not show, such as Java or embedded systems. A framework the resume lacks is not a reason to skip when the resume shows its language. A Django role fits a resume with Python and FastAPI.
 - A named company. Skip a listing with no company name.
-- A real company hiring for its own product or clients. Skip internship mills: India-only outfits whose name is built around interning, skilling or mentoring (internmo, Skillzenloop, Unified Mentor), and listings that sell a "structured internship program" for freshers with a certificate, a performance-based "up to" stipend and the same template posted for many roles.
+- A real company hiring for its own product or clients. Skip internship mills: India-only outfits whose name is built around interning, skilling or mentoring (internmo, Skillzenloop, Unified Mentor), and listings that sell a "structured internship program" for freshers with a certificate, a performance-based "up to" stipend and the same template posted for many roles. Add each mill you reject to is-dl's `blocked-companies`, so no later search returns it. `config set` replaces the whole list, so read it with `is-dl config get blocked-companies --json` first (exit 6 means it is empty) and set the old names plus the new one.
 
 An after-graduation listing is an on-site or hybrid role the user would start in July 2027, after graduating. Every on-site or hybrid Y Combinator listing counts as one, and so does a LinkedIn listing that says it hires 2027 graduates or starts after June 2027. It replaces the remote rule: keep it when the office is in India, or abroad with a visa line that does not say `US citizen/visa only` and nothing else that needs citizenship or residence there. The hours rule below does not apply to it. On its form, answer start date and relocation from the after-graduation lines in `answers.md`.
 
@@ -190,16 +190,23 @@ When the user replies to a report about its drafts, act on the reply right away 
 
 An interrupted job may have gone through, so no run submits it again, and it does not count toward a run's 5. It stays in the file until the user says what happened. If it went through, log it as below from its `sent` and remove the entry. If it did not, set it back to `queued`.
 
-Run both commands right after the confirmation page. For a Y Combinator job, add `--source ycombinator` to each:
+Run these commands right after the confirmation page. For a Y Combinator job, add `--source ycombinator` to each:
 
 ```bash
 is-dl apps add <jobId> --variant <name> --json
+is-dl notes add <jobId> --title "Job details" --url <listing url> --json <<'NOTE'
+...
+NOTE
 is-dl notes add <jobId> --title "Application answer and resume sent" --json <<'NOTE'
 ...
 NOTE
 ```
 
-The note records, word for word:
+When `apps add` exits 2 with `No run holds`, as it does for a repost or a Y Combinator job found through LinkedIn, pass `--listing` as the is-dl skill describes.
+
+The `Job details` note follows the is-dl skill's rules for it. Its pages are the ones this application passed through: the listing, the employer's site or form, and any page they link that describes the role. An interrupted job gets its `Job details` note when you mark it, while those pages are still in front of you.
+
+The `Application answer and resume sent` note records, word for word:
 
 - The date applied, and whether it went through Easy Apply or which external site.
 - Every screening question and the answer you submitted.
