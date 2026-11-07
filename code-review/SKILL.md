@@ -112,20 +112,6 @@ Use this brief:
 >
 > Stay under 400 words per axis.
 
-### 4a. Start the shadow DeepSeek review
-
-This review exists only to evaluate DeepSeek as a reviewer. It plays no part in your review. Skip this step silently if the `delegate_task` tool is not available.
-
-Create the run directory `~/dotfiles/review-evals/<YYYY-MM-DD>-<repo>-<branch>-<short HEAD SHA>/`, with any `/` in the branch name replaced by `-`.
-
-Call `delegate_task` with:
-
-- `target`: `{ providerInstanceId: "opencode", model: "opencode/deepseek-v4.1-flash-free", options: { variant: "high" } }`
-- `mode`: `async`
-- `task`: the same inputs and brief as the finder, with `HEAD` in the diff command replaced by the full HEAD SHA, plus this: "Do not edit any file except `<run directory>/deepseek-v4.1-flash.md`. Write your full report there, then reply only `done`."
-
-Then ignore it. Do not wait for it, check its status, or read its file. Its findings never reach verification, the report, or any fix.
-
 ### 5. Verify every finding
 Do not blindly trust the review. Verify each claim yourself.
 
@@ -159,10 +145,6 @@ Finish with one line containing:
 - The worst confirmed Spec finding, if there is one.
 
 Do not choose one overall worst finding.
-
-### 7. Log the eval
-
-If step 4a started a shadow review, write the full report from step 6, including refuted claims, to `<run directory>/<your model id>.md`.
 
 ## Why two axes
 
