@@ -100,6 +100,8 @@ A job with no id cannot be tracked and will resurface. Reposts get fresh ids and
 
 Saved profiles live in config, so a repeated search is `is-dl search --profile frontend-intern --json`.
 
+Companies never worth a look go in `blocked-companies` in the config file. Every source skips them while it pages, so they use no slot under `--limit`, and the log names each company it skipped. `--help` has the matching rules.
+
 LinkedIn scraping is slow, around 10 seconds per listing while each job's description loads, so a 50-listing run takes 8 minutes or more and a mixed search runs at LinkedIn's pace. Searches for different locations can run in parallel: each one launches its own browser from the saved session. Run long searches in the background with a 2-hour timeout, since a 30-minute shell limit kills them. LinkedIn navigation times out intermittently, so retry a failed search once before reporting it as broken.
 
 With `--exclude-seen` on, LinkedIn skips a known listing before opening it, so a repeat search is faster than the first one rather than slower. A log line reading `Giving up after 5 jobs in a row failed to open`, or an error saying `LinkedIn may have changed its page layout`, means the page shape moved, not that the search was empty. Report that as broken instead of retrying it. A stderr warning that the job description did not appear means the same thing for descriptions, even though the job is still returned.
@@ -132,6 +134,8 @@ When reporting, lead with the role, company, pay kind and link. Flag unpaid, tok
 Append-only JSONL. The last record for a job is its current state, keyed by board and id because the two boards hand out colliding numeric ids.
 
 Log an application immediately after the human confirms they sent it, never before. This is what makes `--exclude-applied` work, so skipping it degrades every future search.
+
+The first `apps add` for a job also saves its listing as `listing.json` in the job's notes folder, from the run copy that kept the most. It outlives `runs rm` and the board taking the job down, and `apps show` prints it. A job no run holds, such as a repost found by hand, exits 2 with `No run holds <id>`. Write its listing to a JSON file with `title`, `companyName`, `jobUrl` and `descriptionText` copied verbatim from the page, and pass `--listing <file>` with `--source`.
 
 `apps list --older-than 10d --status applied` answers "who should I follow up with". Read that job's notes before drafting the follow-up; the process and the names are usually in there.
 
@@ -166,7 +170,7 @@ Editing is for correcting a note you saved wrong, so a truncated paste or a wron
 
 `notes attach` is for anything that is not text. It copies the bytes unchanged, so a PDF brief, a docx take-home or a screenshot keeps its original form and name. Reach for it when the document only makes sense as a file; use `notes add` when the words are the point, since only note bodies come back through `notes show`.
 
-`notes add` reads the board from the run that surfaced the job, so anything from a search needs no `--source`. A job id from outside is-dl needs `--source linkedin` or `--source unstop`, otherwise the note has nowhere to live.
+`notes add` reads the board from the run that surfaced the job, so anything from a search needs no `--source`. A job id from outside is-dl needs `--source linkedin`, `unstop` or `ycombinator`, otherwise the note has nowhere to live.
 
 Notes are independent of the application log, which is deliberate. Note a role while deciding, before there is anything to log. `apps show <jobId>` lists what a job has, and `notes show` prints the bodies.
 
@@ -176,7 +180,9 @@ Each note is a markdown file under `notes/<source>/<jobId>/` in the data dir, so
 
 Save a note when the human hands you text about a role, or asks for one. That covers a pasted hiring doc, a recruiter email they forwarded, a page you fetched for them, and their own verdict on a role.
 
-Do not write notes on your own initiative for every shortlisted job. Nothing downstream needs them, and a note nobody asked for is one more thing to read.
+Every logged application also gets a note titled `Job details`, written when you log it. The listing is one view of the role. The employer's own page, the application form and the docs they link often say more, such as pay, duration, hours, start date, location, the interview process or a deadline. Build the note by reading, since every site puts these somewhere else: a Google Form's header and section text, a field's help text, a careers page, a linked brief. `apps add` already keeps the listing, so the note holds the rest: every passage about the role or the company from each page you saw or the human handed you, under one heading per page with its URL. That includes anything on the listing page its saved description misses. Copy each passage verbatim. Leave out navigation, cookie banners, legal boilerplate, and the form's questions and answers, which belong with what was sent.
+
+Shortlisted jobs get no note unless the human asks. Nothing downstream needs them, and a note nobody asked for is one more thing to read.
 
 When the human gives you material the listing does not carry, offer to save it and say what you would title it. That usually means terms from a linked doc, so pay, duration, bond, equity or location, and the interview process, take-home brief or deadline.
 
@@ -218,7 +224,7 @@ If a listing wants something the resume cannot honestly claim, say so. Do not fi
 3. `is-dl notes add <jobId>` when the human hands over a hiring doc, brief or thread, and `is-dl notes attach` when it is a file.
 4. `is-dl resume build --variant <ai|research|fullstack>` for the ones worth applying to.
 5. The human applies.
-6. `is-dl apps add <jobId> --variant <name>`.
+6. `is-dl apps add <jobId> --variant <name>`, then the `Job details` note.
 
 ## Setup, for a fresh machine
 
