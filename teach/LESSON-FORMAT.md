@@ -1,6 +1,6 @@
 # Lesson Format
 
-Lessons live in `./lessons/` and use sequential numbering: `0001-slug.md`, `0002-slug.md`. A lesson teaches one tightly-scoped thing tied to the mission and should be completable in a single sitting.
+Lessons live in `./lessons/` and use sequential numbering: `0001-slug.md`, `0002-slug.md`. A lesson teaches one tightly-scoped skill tied to the mission. It is made of **parts**, each one turn of the teaching loop in [SKILL.md](./SKILL.md), and grows by one part each time you teach one.
 
 The syntax palette - callouts, Mermaid, LaTeX, wiki-links - is in [VAULT-FORMAT.md](./VAULT-FORMAT.md).
 
@@ -17,19 +17,20 @@ created: {YYYY-MM-DD}
 > [!tip] The win
 > {One sentence: the tangible thing the user can do after this lesson.}
 
-## {The knowledge}
+## Part 1: {the idea}
 
-{The minimum needed to acquire the skill. Cite as you go - every non-obvious
-claim gets a link to a source in RESOURCES.md. Link established terms with
-[[wiki-links]] to the glossary and reference notes.}
+{Numbered steps: worked example, then visual, then the rule. Cite as you go -
+every non-obvious claim gets a link to a source in RESOURCES.md. Link
+established terms with [[wiki-links]] to the glossary and reference notes.}
 
-## Practice
+[Open the stepper](exercises/0001-part-1-stepper.html)
 
 > [!question]- {A question that forces retrieval, not recognition}
 > {The answer, plus one line on why.}
 
-> [!question]- {A second question, ideally reaching back to an earlier lesson}
-> {The answer.}
+## Part 2: {the idea}
+
+{...}
 
 ## Go deeper
 
@@ -45,13 +46,19 @@ it covers and roughly how long it takes.}
 ## Rules
 
 - **Title by capability, not topic.** "Read an RPE score off a set" beats "RPE". The heading should name what the user can now do.
-- **One win per lesson.** If the lesson has two takeaways, it is two lessons. Working memory is the binding constraint.
-- **Knowledge only in service of the skill.** Interesting context that does not feed the practice section is cut, or moved to a reference note.
+- **One win per lesson, one idea per part.** If a part has two takeaways, it is two parts. Working memory is the binding constraint.
+- **Knowledge only in service of the skill.** Interesting context that does not feed the questions is cut, or moved to a reference note.
 - **Cite everything non-obvious.** A lesson with no links is a lesson built on parametric guessing.
-- **Link outward.** Every lesson should link to at least one reference note and at least one neighbouring lesson. The graph view is the map of what has been taught.
-- **Questions must be self-scorable.** The user grades themselves against a folded answer, so the answer has to be specific enough that "close enough" is obvious. Avoid "explain the concept of X".
-- **Reach back.** At least one practice question should test something from an earlier lesson. Spacing and interleaving are why the vault beats a pile of standalone notes.
-- **Compress into reference.** After writing the lesson, ask what the user will want to look up in three months. That goes in `./reference/`, and the lesson links to it.
+- **Keep the explanation that worked.** When a re-explanation, analogy or visual lands after the first try missed, it replaces the first try. The lesson is what the user rereads before the next review.
+- **Questions keep their answers folded**, so the lesson doubles as self-review.
+
+## Finishing a lesson
+
+Once every part is taught:
+
+1. Add `## Go deeper` and the closing note.
+2. Link at least one neighbouring lesson and one reference note. The graph view is the map of what has been taught.
+3. Compress into reference: ask what the user will want to look up in three months. That goes in `./reference/`, and the lesson links to it.
 
 ## Numbering
 

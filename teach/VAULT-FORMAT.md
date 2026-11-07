@@ -10,10 +10,10 @@ RESOURCES.md
 GLOSSARY.md
 INDEX.md
 NOTES.md
+PROGRESS.md
 lessons/0001-dash-case-name.md
 reference/dash-case-name.md
-learning-records/0001-dash-case-name.md
-exercises/         # only when a lesson needs live grading
+exercises/         # interactive visuals and drills
 attachments/       # images, diagrams the user drops in
 .obsidian/         # vault config, committed
 ```
@@ -26,8 +26,9 @@ Create the vault yourself on the first session:
 
 1. Create `$TEACH_HOME/<dash-case-topic>/` and work inside it.
 2. Write `MISSION.md`. Interview the user first if the mission is unclear - do not create the vault around a mission you guessed.
-3. Write `INDEX.md` as the entry note.
-4. Create `.obsidian/app.json` so links and attachments behave predictably:
+3. Write `INDEX.md` as the entry note, with the planned lessons in teaching order.
+4. Write an empty `PROGRESS.md` in the format in [PROGRESS-FORMAT.md](./PROGRESS-FORMAT.md).
+5. Create `.obsidian/app.json` so links and attachments behave predictably:
 
 ```json
 {
@@ -38,7 +39,7 @@ Create the vault yourself on the first session:
 }
 ```
 
-5. Tell the user to open the directory in Obsidian with **Open folder as vault**, once. If they don't have Obsidian yet, point them to https://obsidian.md/download first.
+6. Tell the user to open the directory in Obsidian with **Open folder as vault**, once. If they don't have Obsidian yet, point them to https://obsidian.md/download first.
 
 `alwaysUpdateLinks` matters: it means renaming a note rewrites every link to it, so the vault does not rot as lesson titles change.
 
@@ -118,14 +119,14 @@ created: 2026-09-11
 ---
 ```
 
-Tags are `lesson`, `reference`, `learning-record`. Add topic tags only when the vault is large enough that search needs them. Resist adding more fields - anything you would put here is usually better said in `INDEX.md`.
+Tags are `lesson` and `reference`. Add topic tags only when the vault is large enough that search needs them. Resist adding more fields - anything you would put here is usually better said in `INDEX.md`.
 
 ## Interactive exercises
 
-When a skill needs live grading or simulation a note cannot do, write one self-contained HTML file to `./exercises/` and link it from the lesson as an ordinary Markdown link:
+Interactive visuals (steppers, playgrounds) and drills (timed tests) are one self-contained HTML file each in `./exercises/`, linked from their lesson part as an ordinary Markdown link:
 
 ```md
 [Open the interval drill](exercises/0004-interval-drill.html)
 ```
 
-Obsidian opens it in the browser. Keep it self-contained: no build step, no shared stylesheet, no external dependencies. If two exercises want to share code, that is a sign the loop belongs in the session with you instead.
+Obsidian opens it in the browser. Keep it self-contained: no build step, no shared stylesheet, no external dependencies. It has to work at phone width.

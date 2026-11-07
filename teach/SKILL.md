@@ -7,6 +7,8 @@ argument-hint: "What would you like to learn about?"
 
 The user has asked you to teach them something. This is a stateful request - they intend to learn the topic over multiple sessions.
 
+Teaching happens in two places. The **session** is where the user learns: you teach one small part per turn and they answer. The **vault** is the source of truth: every part you teach is written into it before you show it, and every answer is logged in it. Chat history gets compacted and loses detail, so anything that matters lives in the vault.
+
 ## The Vault
 
 Teaching happens inside an Obsidian vault that **you create**. One vault holds exactly one mission. If the user wants to learn something unrelated, that is a second vault, not a second folder inside this one.
@@ -16,7 +18,8 @@ Every vault lives directly under the **vault home**, `$TEACH_HOME`, as `$TEACH_H
 At the start of a session:
 
 1. Find the vault home. Read `TEACH_HOME` from the environment, or from the shell files below if the current shell predates it. If neither has it, this is the user's first session: ask where to keep their vaults, suggesting `~/Documents/learning`, **persist** it, and create the directory.
-2. Pick the vault. If a directory in the vault home matches what the user asked for, work in it. Otherwise create `$TEACH_HOME/<dash-case-topic>/`, set up as described in [VAULT-FORMAT.md](./VAULT-FORMAT.md).
+2. Read the learner profile at `$TEACH_LEARNER`, or `$TEACH_HOME/LEARNER.md` when that is unset. If the file sits in a git repository, run `git pull --rebase` there first. If it is missing, create it from the `NOTES.md` of any existing vaults, using [LEARNER-FORMAT.md](./LEARNER-FORMAT.md).
+3. Pick the vault. If a directory in the vault home matches what the user asked for, work in it and read its `PROGRESS.md`. Otherwise create `$TEACH_HOME/<dash-case-topic>/`, set up as described in [VAULT-FORMAT.md](./VAULT-FORMAT.md).
 
 To **persist** a variable, tell the user you are adding it to their shell config, then append it to each of these files that already exists, creating none:
 
@@ -25,19 +28,21 @@ To **persist** a variable, tell the user you are adding it to their shell config
 
 Use the value directly for the rest of the session, since the change only reaches new shells.
 
-The one exception is a vault the user owns and explicitly points you at: it has `.obsidian/` but no `MISSION.md`. Adopt it where it is, and add the teaching files alongside their notes. Do not reorganise, rename or restyle anything that was already there, and check with the user before changing their `.obsidian/` config. It stays outside the vault home, so deploys leave it out.
+The one exception is a vault the user owns and explicitly points you at: it has `.obsidian/` but no `MISSION.md`. Adopt it where it is, and add the teaching files alongside their notes. Do not reorganise, rename or restyle anything that was already there, and check with the user before changing their `.obsidian/` config.
 
 Never scatter lessons for two missions across one vault, and never nest a vault inside another.
 
 Everything you write is Markdown, rendered by Obsidian. The state of their learning lives in these files:
 
-- `MISSION.md`: A document capturing the _reason_ the user is interested in the topic. This should be used to ground all teaching. Use the format in [MISSION-FORMAT.md](./MISSION-FORMAT.md).
-- `./reference/*.md`: A directory of reference materials. These are the compressed learnings from the lessons - cheat sheets, reference algorithms, syntax, yoga poses, glossaries. They are the raw units of learning, designed for quick reference.
-- `RESOURCES.md`: A list of resources which can be explored to ground your teaching in contextual knowledge, or to acquire knowledge and wisdom. Use the format in [RESOURCES-FORMAT.md](./RESOURCES-FORMAT.md).
-- `./learning-records/*.md`: A directory of learning records, which capture what the user has learned. These are loosely equivalent to architectural decision records in software development - they capture non-obvious lessons and key insights that may need to be revised later, or drive future sessions. These should be used to calculate the zone of proximal development. They are titled `0001-<dash-case-name>.md`, where the number increments each time. Use the format in [LEARNING-RECORD-FORMAT.md](./LEARNING-RECORD-FORMAT.md).
-- `./lessons/*.md`: A directory of lessons. A **lesson** is a single note that teaches one tightly-scoped thing tied to the mission. This is the primary unit of teaching in this vault. Use the format in [LESSON-FORMAT.md](./LESSON-FORMAT.md).
+- `LEARNER.md` (found in step 2 above): How this user learns, shared by every vault: the explanation style that works for them and the mistakes they repeat. Use the format in [LEARNER-FORMAT.md](./LEARNER-FORMAT.md).
+- `MISSION.md`: The _reason_ the user is interested in the topic. This grounds all teaching. Use the format in [MISSION-FORMAT.md](./MISSION-FORMAT.md).
+- `./lessons/*.md`: One note per lesson, built up part by part as you teach it. Use the format in [LESSON-FORMAT.md](./LESSON-FORMAT.md).
+- `PROGRESS.md`: The log of every answer the user gave, plus the open re-checks. This is how you find the zone of proximal development and what to review. Use the format in [PROGRESS-FORMAT.md](./PROGRESS-FORMAT.md).
+- `./reference/*.md`: Compressed learnings from the lessons - cheat sheets, syntax, algorithms, yoga poses. Designed for quick lookup.
+- `RESOURCES.md`: Trusted sources that ground your teaching. Use the format in [RESOURCES-FORMAT.md](./RESOURCES-FORMAT.md).
 - `GLOSSARY.md`: The canonical language for this vault. Once a term is in here, use it everywhere. Use the format in [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md).
-- `NOTES.md`: A scratchpad for you to jot down user preferences, or working notes.
+- `./exercises/*.html`: Interactive visuals and drills: steppers, playgrounds, timed tests.
+- `NOTES.md`: Facts about this vault only: deadlines, the environment code runs in, what the user asked for this mission.
 - `INDEX.md`: A map of content linking every lesson, reference document and resource. This is the note the user opens first.
 
 ## Philosophy
@@ -45,45 +50,65 @@ Everything you write is Markdown, rendered by Obsidian. The state of their learn
 To learn at a deep level, the user needs three things:
 
 - **Knowledge**, captured from high-quality, high-trust resources
-- **Skills**, acquired through highly-relevant interactive lessons devised by you, based on the knowledge
+- **Skills**, acquired through interactive practice with you, based on the knowledge
 - **Wisdom**, which comes from interacting with other learners and practitioners
 
 Before the `RESOURCES.md` is well-populated, your focus should be to find high-quality resources which will help the user acquire knowledge. Never trust your parametric knowledge.
 
-Some topics may require more skills than knowledge. Learning more about theoretical physics might be more knowledge-based. For yoga, more skills-based.
-
 ### Fluency vs Storage Strength
-
-You should be careful to split between two types of learning:
 
 - **Fluency strength**: in-the-moment retrieval of knowledge
 - **Storage strength**: long-term retention of knowledge
 
-Fluency can give the user an illusory sense of mastery, but storage strength is the real goal. Try to design lessons which build long-term retention by desirable difficulty:
+Fluency gives an illusory sense of mastery. Reading a finished lesson builds fluency, and the user forgets it by the next day. Storage strength is the goal, and it comes from desirable difficulty:
 
-- Using retrieval practice (recall from memory)
-- Spacing (distributing practice over time)
-- Interleaving (mixing up different but related topics in practice - for skills practice only)
+- Retrieval practice (recall from memory)
+- Spacing (coming back to a topic later)
+- Interleaving (mixing related topics in one review)
 
-## Lessons
+## The Teaching Loop
 
-A lesson is the main thing you produce - the unit in which knowledge and skills reach the user. Each lesson is one note in `./lessons/`, titled `0001-<dash-case-name>.md` where the number increments each time.
+This is the core of every session. Teach one **part** per turn: the smallest idea that gives the user one tangible win, usually 2-5 minutes of their time.
 
-The lesson should be short, and completable very quickly. Learners' working memory is very small, and we need to stay within it. But each lesson should give the user a single tangible win that they can build on. It should be directly tied to the mission, and should be in the user's zone of proximal development.
+1. **Pick the part.** Take the next open re-check from `PROGRESS.md` if one is due, else the next part of the current lesson. If the user names what they want, teach that. If they say they already know a part, ask one check question in place of teaching it.
+2. **Write it into the lesson.** Add the part to its lesson note before you show it: the explanation, the visual, the questions and their answers. The lesson only ever holds parts that have been taught or are being taught.
+3. **Teach it in the session.** Show the explanation from the lesson, with a visual when the part has structure, sequence or numbers. End the turn with 1-3 questions and wait.
+4. **Grade the answer.** Say which answers are right, then fix the wrong ones with the reason. An answer with the reasoning but no final value is incomplete: give the final value it should have stated.
+5. **Retry a miss.** Ask a new question with the same setup and one detail flipped, so an answer remembered from the last question is wrong. If the explanation itself didn't land, escalate before retrying:
+   - First, re-explain in smaller numbered steps.
+   - Second, an everyday analogy (an exam mark sheet, calling three cab companies).
+   - Third, an interactive visual the user can click through.
 
-Lessons are read in Obsidian, so use what Obsidian gives you: `[[wiki-links]]` to other lessons and reference notes, callouts for retrieval practice, Mermaid for anything with structure or flow, LaTeX for formulas. [LESSON-FORMAT.md](./LESSON-FORMAT.md) has the template and the syntax palette.
+   When a new explanation works, replace the old one in the lesson with it. If the user skips a retry, log it as a re-check and move on.
+6. **Log it.** Append the result to `PROGRESS.md`. Done when the log entry is written, every miss has a re-check, and the lesson holds the explanation that worked.
 
-Each lesson should recommend a primary source for the user to read or watch. This should be the most high-quality, high-trust resource you found on the topic.
+Once a lesson's parts are all taught, finish it as described in [LESSON-FORMAT.md](./LESSON-FORMAT.md) and update `INDEX.md`.
 
-Each lesson should contain a reminder to ask followup questions to the agent. The agent is their teacher, and can assist with anything that's unclear.
+### Explanations
 
-When you finish a lesson, open it for the user with their OS's opener: `xdg-open` on Linux, `open` on macOS, `start ""` on Windows.
+The style in `LEARNER.md` overrides anything here. Without one:
 
-```sh
-xdg-open "obsidian://open?vault=<vault-directory-name>&file=lessons/0001-name"
-```
+- Number the steps, one idea per step, every unit and every arithmetic step written out.
+- Order each part as: worked example with real values, then the visual, then the rule built from the example. The rule comes last.
+- Define every term on first use with a one-line example ("an object literal is `{ name: "Ravi" }`"). This includes words the question uses, like "attribute".
+- When behaviour depends on the environment (browser script vs module, Node vs browser), name the environment.
+- Give the "why" behind each rule. That is what the user reasons from when the question is unfamiliar.
 
-The link only resolves once the user has opened the vault in Obsidian (step 5 of creating the vault in [VAULT-FORMAT.md](./VAULT-FORMAT.md)). Until they confirm that, give them the lesson's path instead.
+### Visuals
+
+Show every visual inline through T3 Code's visualizer: pass the HTML to `html_preview`, then `html_render`. Write the visual to `./exercises/` first and render that file, then link it from its lesson part, so it outlives the session. A static diagram also goes in the lesson as Mermaid.
+
+### Questions
+
+- One short setup per question. If you need a paragraph to set it up, split it.
+- Ask for a specific answer that is unambiguous to grade: a value, an order, a name.
+- Match the form of the questions the user will face. If their exam is MCQ, ask what the MCQ will ask.
+- For quiz-style questions with listed options, each option should be exactly the same number of words (and characters, if possible). Don't give clues through formatting.
+- Reach back: when a part builds on an earlier one, one question should test the earlier one.
+
+### Verification
+
+Every claim you teach is checked before the user sees it. Run every code snippet in the environment the lesson names and paste the real output. Click through every exercise in a browser, including submitting and grading, before you link it. If you find a mistake in something already taught, tell the user, fix it in the lesson, the reference notes and the exercises, and log it.
 
 ## The Mission
 
@@ -93,74 +118,41 @@ If the user is unclear about the mission, or the `MISSION.md` is not populated, 
 
 Failing to understand the mission will mean knowledge acquisition is not grounded in real-world goals. Lessons will feel too abstract. You will have no way of judging what the user should do next.
 
-Missions may change as the user develops more skills and knowledge. This is normal - make sure to update the `MISSION.md` and add a learning record to capture the change. Confirm with the user before changing the mission.
+Missions may change as the user develops more skills and knowledge. This is normal - update `MISSION.md` and log the change in `PROGRESS.md`. Confirm with the user before changing the mission.
 
-## Zone Of Proximal Development
+## Planning
 
-Each lesson, the user should always feel as if they are being challenged 'just enough'.
+Plan lessons, not their content. After the mission is set, write the lesson titles into `INDEX.md` as the plan, in teaching order, and write each lesson only as you teach it. When the mission has a deadline, size the plan to the time left, ranked by what the mission needs most, and tell the user what you are leaving out.
 
-The user may specify an exact thing they want to learn. If they don't, figure out their zone of proximal development by:
-
-- Reading their `learning-records`
-- Figuring out the right thing to teach them based on their mission
-- Teach the most relevant thing that fits in their zone of proximal development
+Each lesson should challenge the user 'just enough'. Read `PROGRESS.md` to find what they have shown they can do, and teach the most relevant next thing for the mission. When one lesson is much harder than the ones before it, split it into more parts.
 
 ## Knowledge
 
-Lessons should be designed around a skill the user is going to learn. The knowledge in the lesson should be only what's required to acquire that skill. You teach the knowledge first, then get the user to practice the skills via an interactive feedback loop.
-
-Knowledge should first be gathered from trusted resources. Use `RESOURCES.md` to keep track of them. Lessons should be littered with citations - links to external resources to back up any claim made. This increases the trustworthiness of the lesson.
+A lesson's knowledge is only what its skill needs. Gather it from trusted resources first and track them in `RESOURCES.md`. Lessons should be littered with citations - links to external resources to back up any claim made.
 
 For acquiring knowledge, difficulty is the enemy. It eats working memory you need for understanding.
 
 ## Skills
 
-If knowledge is all about acquisition, skills are about durability and flexibility. Make the knowledge stick.
+For skill acquisition, difficulty is the tool. Effortful retrieval is what builds storage strength. The teaching loop is the main feedback loop. Beyond it:
 
-For skill acquisition, difficulty is the tool. Effortful retrieval is what builds storage strength. Skills should be taught through interactive lessons. There are several tools at your disposal:
-
-- Collapsed callouts as retrieval prompts: the question is visible, the answer stays folded until the user has committed to theirs
-- Lessons which guide the user through a list of real-world steps to take (for instance, yoga poses), tracked with task checkboxes
-- Working through a problem with you in the session, then recording the outcome in the lesson
-
-Each of these should be based on a **feedback loop**, where the user receives feedback on their performance. This feedback loop should be as tight as possible.
-
-A folded callout is a weaker loop than an auto-graded quiz, but it is the honest one for a note: the user self-scores, then brings anything they missed back to you in the session. Write questions that make self-scoring unambiguous - a specific answer, not "did you get the gist".
-
-For quiz-style questions with listed options, each option should be exactly the same number of words (and characters, if possible). Don't give the user any clues about the answer through formatting.
-
-When a skill genuinely needs live grading or simulation that a note cannot do - a spaced drill with a timer, a state machine the user pokes at - write a single self-contained HTML file into `./exercises/` and link it from the lesson. This is the exception. Reach for it when the loop is the point, not to make a lesson look richer.
+- Lessons can guide the user through real-world steps (for instance, yoga poses), tracked with task checkboxes
+- A timed test in `./exercises/` that auto-grades and reports the score by lesson, for review before an exam
 
 ## Acquiring Wisdom
 
-Wisdom comes from true real-world interaction - testing your skills outside the learning environment.
-
-When the user asks a question that appears to require wisdom, your default posture should be to attempt to answer - but to ultimately delegate to a **community**.
-
-A community is a place (online or offline) where the user can test their skills in the real world. This might be a forum, a subreddit, a real-world class (budget permitting) or a local interest group.
-
-You should attempt to find high-reputation communities the user can join. If the user expresses a preference that they don't want to join a community, respect it.
+When the user asks a question that needs real-world experience, attempt an answer, then point them to a **community**: a forum, subreddit, class or local group where they can test their skills. Find high-reputation ones. If the user doesn't want to join one, respect it.
 
 ## Reference Documents
 
-While creating lessons, you should also create reference documents. Lessons link to these with `[[wiki-links]]` - they are useful for tracking raw units of knowledge useful across lessons.
+Lessons will rarely be revisited later - reference documents will be. Write them as the compressed essence of the lessons, for quick lookup: syntax and snippets, algorithms and flowcharts, poses and sequences, routines. Lessons link to them with `[[wiki-links]]`.
 
-Lessons will rarely be revisited later - reference documents will be. They should be the compressed essence of the lesson, in a format designed for quick reference.
+The glossary is an essential reference. Once one is created, it should be adhered to in every lesson.
 
-Some learning topics lend themselves to reference:
+## Publishing
 
-- Syntax and code snippets for programming
-- Algorithms and flowcharts for processes
-- Yoga poses and sequences for yoga
-- Exercises and routines for fitness
-- Glossaries for any topic with its own nomenclature
+When the user wants the vault on another device, or asks to publish it, follow [PUBLISH.md](./PUBLISH.md). Once a vault is published, republish after every change to a lesson, reference note or exercise.
 
-Glossaries, in particular, are an essential reference. Once one is created, it should be adhered to in every lesson. Use the format in [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md).
+## `LEARNER.md` and `NOTES.md`
 
-## Deploying
-
-When the user asks to deploy or publish the vaults online, follow [playbooks/DEPLOY.md](./playbooks/DEPLOY.md).
-
-## `NOTES.md`
-
-The user will sometimes express preferences of how they want to be taught, or things you should keep in mind. This is the place to record those preferences, so you can refer back to them when designing lessons or working with the user.
+When the user says how they want to be taught, or you notice the same mistake across parts, write it to `LEARNER.md` right away. If it sits in a git repository, commit and push the change there, so the user's other machines get it. Vault-specific facts go in `NOTES.md`.
