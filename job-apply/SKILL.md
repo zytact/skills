@@ -100,6 +100,15 @@ is-dl search -k software --source ycombinator --ycombinator-skip-us-only \
 
 It needs no browser and finishes in under a minute. Its listings are mostly full-time jobs with an annual USD range in `pay.amount`, so judge pay by the job rule below. Judge each one from its `descriptionText` and `requirementsText` instead of opening the page. It returns on-site and hybrid listings too, because Y Combinator is where the user also looks for a job after graduating (see below).
 
+Run one Wellfound search every run too. It may also run alongside a LinkedIn search:
+
+```bash
+is-dl search -k engineer --source wellfound -l India --wellfound-max-experience 1 \
+  --exclude-seen --exclude-applied --exclude-unpaid --json
+```
+
+It needs no browser. Most of its listings are full-time and on-site in India, with a yearly range in `pay.amount`, and they count as after-graduation listings the same way Y Combinator's do. A listing that states no minimum experience counts as 0 years, so read the title and drop senior, lead and staff roles. Judge each one from its `descriptionText` and `requirementsText`.
+
 `--exclude-seen` hides every listing a search has returned before, opened or not. Keep `--posted-within`: without it, the search pages past the seen listings into months-old on-site results. Before you start applying, write the kept candidates to `pending.json` (see Log), so an interrupted run does not lose them.
 
 Judge each listing by reading its description, as the is-dl skill describes. The pay label misses pay stated in the text, so read for it. Keep a listing only if all of these hold:
@@ -110,7 +119,7 @@ Judge each listing by reading its description, as the is-dl skill describes. The
 - A named company. Skip a listing with no company name.
 - A real company hiring for its own product or clients. Skip internship mills: India-only outfits whose name is built around interning, skilling or mentoring (internmo, Skillzenloop, Unified Mentor), and listings that sell a "structured internship program" for freshers with a certificate, a performance-based "up to" stipend and the same template posted for many roles. Add each mill you reject to is-dl's `blocked-companies`, so no later search returns it. `config set` replaces the whole list, so read it with `is-dl config get blocked-companies --json` first (exit 6 means it is empty) and set the old names plus the new one.
 
-An after-graduation listing is an on-site or hybrid role the user would start in July 2027, after graduating. Every on-site or hybrid Y Combinator listing counts as one, and so does a LinkedIn listing that says it hires 2027 graduates or starts after June 2027. It replaces the remote rule: keep it when the office is in India, or abroad with a visa line that does not say `US citizen/visa only` and nothing else that needs citizenship or residence there. The hours rule below does not apply to it. On its form, answer start date and relocation from the after-graduation lines in `answers.md`.
+An after-graduation listing is an on-site or hybrid role the user would start in July 2027, after graduating. Every on-site or hybrid Y Combinator or Wellfound listing counts as one, and so does a LinkedIn listing that says it hires 2027 graduates or starts after June 2027. It replaces the remote rule: keep it when the office is in India, or abroad with a visa line that does not say `US citizen/visa only` and nothing else that needs citizenship or residence there. The hours rule below does not apply to it. On its form, answer start date and relocation from the after-graduation lines in `answers.md`.
 
 Hours decide. Keep a listing when its hours fit the user's, as `answers.md` states them: flexible or async hours, part-time, or up to about 40 hours a week. Skip it when it needs more, or fixed working hours during the user's weekday classes. A listing that states no hours, or only says `Full-time`, stays in. If a form asks about hours or a start date, answer from `answers.md`.
 
@@ -122,7 +131,7 @@ For each kept listing, one at a time:
 
 1. Add a variant to `variants.yaml` named `<company>-<role>`, by copying an existing block and changing only `headline`, `lead` and `drop`. Build it with `is-dl resume build --variant <name> --json` and take the PDF path from its output. Fix overflow by dropping bullets, as the is-dl skill says.
 2. `open` the listing and `snapshot`. For a Y Combinator job, `open` `https://www.workatastartup.com/jobs/<jobId>` instead. Its `applyUrl` only leads to the profile wizard. A LinkedIn listing whose Apply goes to `ycombinator.com` or `workatastartup.com` is a Y Combinator job too: find the role on the company's page (`https://www.ycombinator.com/companies/<slug>`, its `jobPostings` in the `data-page` JSON) and continue with its `id` as the `jobId` and `source` set to `ycombinator`. If the role is not there, it has closed; reject it.
-3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, write a Gmail draft; see Email drafts. On a Y Combinator job page, a signed-in user's name shows next to "My profile". If the page shows "Sign in" there instead, stop on every Y Combinator job this run and tell the user to sign in to workatastartup.com in Helium. Snapshots miss its Apply link, so click it with `eval`: the `a` element whose text is exactly `Apply`. It opens a dialog with one message to the founder, at least 50 characters, and a Send button. Write the message as Drafts describes. When the dialog says the qualifications might not match, re-check the listing against the keep rules and go ahead if it still passes. Never click Send on a run; see Drafts. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
+3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, write a Gmail draft; see Email drafts. On a Y Combinator job page, a signed-in user's name shows next to "My profile". If the page shows "Sign in" there instead, stop on every Y Combinator job this run and tell the user to sign in to workatastartup.com in Helium. Snapshots miss its Apply link, so click it with `eval`: the `a` element whose text is exactly `Apply`. It opens a dialog with one message to the founder, at least 50 characters, and a Send button. Write the message as Drafts describes. When the dialog says the qualifications might not match, re-check the listing against the keep rules and go ahead if it still passes. Never click Send on a run; see Drafts. A Wellfound job page that shows `Log In` and `Sign Up` is signed out: stop on every Wellfound job this run and tell the user to sign in to wellfound.com in Helium. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
 4. Fill the form:
    - Contact fields and screening questions come from `answers.md`. Copy the facts. Do not round, stretch or guess. Where `answers.md` and `resume.yaml` disagree, `answers.md` wins in forms. Never edit `resume.yaml` to match.
    - `$APPLICANT_PHONE` already starts with `+91`. When the form has its own country code field, pick India there and enter the number without `+91`.
@@ -200,7 +209,7 @@ When the user replies to a report about its drafts, act on the reply right away 
 
 An interrupted job may have gone through, so no run submits it again, and it does not count toward a run's 5. It stays in the file until the user says what happened. If it went through, log it as below from its `sent` and remove the entry. If it did not, set it back to `queued`.
 
-Run these commands right after the confirmation page. For a Y Combinator job, add `--source ycombinator` to each:
+Run these commands right after the confirmation page. For a Y Combinator or Wellfound job, add `--source ycombinator` or `--source wellfound` to each:
 
 ```bash
 is-dl apps add <jobId> --variant <name> --json
