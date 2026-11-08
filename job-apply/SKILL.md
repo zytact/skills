@@ -122,7 +122,7 @@ For each kept listing, one at a time:
 
 1. Add a variant to `variants.yaml` named `<company>-<role>`, by copying an existing block and changing only `headline`, `lead` and `drop`. Build it with `is-dl resume build --variant <name> --json` and take the PDF path from its output. Fix overflow by dropping bullets, as the is-dl skill says.
 2. `open` the listing and `snapshot`. For a Y Combinator job, `open` `https://www.workatastartup.com/jobs/<jobId>` instead. Its `applyUrl` only leads to the profile wizard. A LinkedIn listing whose Apply goes to `ycombinator.com` or `workatastartup.com` is a Y Combinator job too: find the role on the company's page (`https://www.ycombinator.com/companies/<slug>`, its `jobPostings` in the `data-page` JSON) and continue with its `id` as the `jobId` and `source` set to `ycombinator`. If the role is not there, it has closed; reject it.
-3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, stop on this job. On a Y Combinator job page, a signed-in user's name shows next to "My profile". If the page shows "Sign in" there instead, stop on every Y Combinator job this run and tell the user to sign in to workatastartup.com in Helium. Snapshots miss its Apply link, so click it with `eval`: the `a` element whose text is exactly `Apply`. It opens a dialog with one message to the founder, at least 50 characters, and a Send button. Write the message as Drafts describes. When the dialog says the qualifications might not match, re-check the listing against the keep rules and go ahead if it still passes. Never click Send on a run; see Drafts. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
+3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. If the listing only gives an email address, write a Gmail draft; see Email drafts. On a Y Combinator job page, a signed-in user's name shows next to "My profile". If the page shows "Sign in" there instead, stop on every Y Combinator job this run and tell the user to sign in to workatastartup.com in Helium. Snapshots miss its Apply link, so click it with `eval`: the `a` element whose text is exactly `Apply`. It opens a dialog with one message to the founder, at least 50 characters, and a Send button. Write the message as Drafts describes. When the dialog says the qualifications might not match, re-check the listing against the keep rules and go ahead if it still passes. Never click Send on a run; see Drafts. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
 4. Fill the form:
    - Contact fields and screening questions come from `answers.md`. Copy the facts. Do not round, stretch or guess. Where `answers.md` and `resume.yaml` disagree, `answers.md` wins in forms. Never edit `resume.yaml` to match.
    - `$APPLICANT_PHONE` already starts with `+91`. When the form has its own country code field, pick India there and enter the number without `+91`.
@@ -157,7 +157,6 @@ Stop on a job and move to the next one when it needs any of these:
 - A question whose answer is not in `answers.md` and not in the resume.
 - Something personal: health, disability, family, salary history, references, or anything you would not say on the user's behalf.
 - A new account, an assessment, a test, a video, a payment, or joining a group or community such as WhatsApp.
-- An email-only application.
 - A captcha or security check. Do not retry it, and never try to solve one. Record every field you filled and its value in the entry's `question`, starting with `Captcha:`, so the job can be handed off.
 
 Record it in `pending.json` with the exact question and a link. At the end of the run, list each stopped job.
@@ -170,11 +169,11 @@ When the user answers, add each reusable fact under "Learned answers" in `answer
 
 ### Drafts
 
-The user approves two kinds of text before it goes out: every Y Combinator founder message, and any form answer longer than about 3 sentences. Draft it, do not send it, and record the job in `pending.json` as `drafted` with the `message`, plus the form's `question` for a form answer. It counts toward the run's 5.
+The user approves three kinds of text before it goes out: every Y Combinator founder message, every email application, and any form answer longer than about 3 sentences. Draft it, do not send it, and record the job in `pending.json` as `drafted` with the `message`, plus the form's `question` for a form answer, or `to` and `subject` for an email. It counts toward the run's 5.
 
 A Y Combinator application is the founder message alone; the founder sees the resume on the user's Work at a Startup profile. So skip the variant build and the upload for these jobs. Close the dialog without sending. For a form answer, fill the rest of the form but do not submit it.
 
-Write 4 to 6 sentences, about 80 to 120 words:
+Write 4 to 6 sentences, about 80 to 120 words. What the listing asks the message to cover comes first:
 
 - Who the user is, from `resume.yaml`.
 - Why this company: one specific thing from the listing or the company's page, such as its product, its problem or how the role works, tied to something the user has built or cares about. A sentence that would fit any company does not count.
@@ -183,11 +182,21 @@ Write 4 to 6 sentences, about 80 to 120 words:
 
 Claim only what `resume.yaml` and `answers.md` show. For a form answer, answer the question that is asked, with the same facts. Write it in the user's voice, as `~/.config/is-dl/voice.md` describes, when that file exists. Its beliefs and stories may supply the reason and the framing, never a fact the resume lacks.
 
-When the user replies to a report about its drafts, act on the reply right away instead of waiting for the next run. For each draft they approve, with their changes applied: open the job page, fill the form again by the rules above with the approved text, submit or Send, confirm the page shows the application as sent, then log it as below. A draft the user rejects is removed from the file. A draft the user has not answered stays as it is.
+#### Email drafts
+
+Draft from the account whose address is the contact email in `resume.yaml`, `that.zytact@gmail.com`. `open https://mail.google.com/mail/?authuser=<address>`; the tab title must end with `<address> - Gmail`. If it does not, that account is not signed in: stop on every email job this run and tell the user to sign in to it in Helium.
+
+1. `goto https://mail.google.com/mail/?authuser=<address>&view=cm&fs=1&to=<to>&su=<subject>&body=<body>`, each value URL-encoded, newlines as `%0A`. The subject follows the listing's instructions; without any, use `<role> application - <name>`.
+2. `snapshot` once the page settles, and `upload` the built PDF to the `Filedata` file input.
+3. Snapshot until the page text shows `Attachment resume.pdf added` and `Draft saved`, then `close` the tab to leave the compose; its Discard button freezes the tab.
+
+#### Approval
+
+When the user replies to a report about its drafts, act on the reply right away instead of waiting for the next run. For each draft they approve, with their changes applied: open the job page, fill the form again by the rules above with the approved text, submit or Send, confirm the page shows the application as sent, then log it as below. For an email, open `https://mail.google.com/mail/?authuser=<address>#drafts`, click the draft by its subject, apply the changes, check `resume.pdf` is still attached, click Send and wait for `Message sent`. Its log channel is `Email to <to>`. A draft the user rejects is removed from the file. A draft the user has not answered stays as it is.
 
 ## Log
 
-`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `source`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped`, `drafted` or `interrupted`), `question` when stopped or drafted for a form answer, `message` when drafted, and `sent` when interrupted: the site and every field you submitted. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`), unless `is-dl apps list --json` shows a logged application with that `variant`. A stopped job keeps its variant.
+`~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `source`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped`, `drafted` or `interrupted`), `question` when stopped or drafted for a form answer, `message` when drafted, `to` and `subject` for an email draft, and `sent` when interrupted: the site and every field you submitted. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`), unless `is-dl apps list --json` shows a logged application with that `variant`. A stopped job keeps its variant.
 
 An interrupted job may have gone through, so no run submits it again, and it does not count toward a run's 5. It stays in the file until the user says what happened. If it went through, log it as below from its `sent` and remove the entry. If it did not, set it back to `queued`.
 
