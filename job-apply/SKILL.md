@@ -238,4 +238,8 @@ End every run with:
 - How many of the run's 5 you applied to.
 - Each script you added to or changed in `~/.local/share/job-apply/scripts/`.
 - When the usage gate deferred the run: the utilization, the reset time, and when the continuation fires.
+- A link to the feedback file and how many notes this run added.
 
+## Feedback
+
+Whenever this skill or `browser.mjs` is unclear, wrong or missing something, append a note to `~/.local/state/job-apply/feedback.md`: one line under a heading with the run's date, naming the job or command it came from. Skip a note the file already has in substance. Agents that fix the skill work through this file and remove each note they resolve.
