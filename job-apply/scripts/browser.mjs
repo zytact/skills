@@ -127,11 +127,11 @@ async function where(evaluate) {
   return evaluate(`({ url: location.href, title: document.title, dialog: ${DIALOGS}.length > 0 })`);
 }
 
-/** Copies the main profile's Default folder, minus caches and history, into the private copy. */
+/** Copies the main profile's Default folder, minus caches and history, into the private copy, which starts with no restored tabs. */
 function syncProfile() {
   mkdirSync(join(PROFILE, 'Default'), { recursive: true });
-  for (const name of ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'DevToolsActivePort']) {
-    rmSync(join(PROFILE, name), { force: true });
+  for (const name of ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'DevToolsActivePort', 'Default/Sessions', 'Default/Sessions_Encrypted']) {
+    rmSync(join(PROFILE, name), { recursive: true, force: true });
   }
   writeFileSync(join(PROFILE, 'Local State'), readFileSync(join(SOURCE, 'Local State')));
   const exclude = ['IndexedDB', 'Service Worker', '*Cache*', 'blob_storage', 'File System', 'Extensions', 'History*', 'Favicons*', 'LOCK', 'Sessions'];
