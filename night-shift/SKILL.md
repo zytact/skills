@@ -23,11 +23,10 @@ Then ask the user, in one batch, everything still open:
 - Start times as fixed clock times. Turn "an hour after the last one" into a time.
 - The latest start time. No task launches after it, so a long deferral can't push the queue into the user's day.
 - The model and effort for the main thread, if they didn't name one.
-- Merge policy per task. A task that changes policy or leaves a design point open should get a PR left open for review.
 - Shared external resources that threads on different providers would still compete for when they run at the same time.
 - The usage gate's threshold, default 60% of the 5-hour window with the reset more than 45 minutes away, and which tasks it applies to.
 
-Done when every task has a time, a branch name, a model, and a merge policy, and the queue has a latest start time.
+Done when every task has a time, a branch name and a model, and the queue has a latest start time.
 
 ## 2. Schedule
 
@@ -72,7 +71,7 @@ The thread message starts with `/<skill> <task>` and the skill file's path as a 
 - Which model handles which step, through `delegate_task`, with a new task and `clientRequestId` for each round.
 - Shared-resource limits: a minimal request budget, failures reported instead of retried in loops, real data only.
 - The other tasks in the queue, and a rebase onto origin's default branch with checks rerun before the final push.
-- `link_pull_request` for the PR, and that task's merge policy.
+- `link_pull_request` for the PR.
 
 ## 3. Schedule the check-in
 
@@ -83,7 +82,7 @@ T3 Code resumes threads stopped by a usage limit once the limit resets. The chec
 - A deferral would have missed the latest start time: leave it skipped and report it, so the user decides.
 - It has no schedule and no thread: report it as lost. It deleted its schedule and then failed to create the deferred one.
 - Its thread is still running: leave it.
-- Its thread finished: PR open or merged per its merge policy, or a reported blocker.
+- Its thread finished: its PR, or a reported blocker.
 - Its thread stopped partway through: one `t3_thread_send` telling it to resume the skill from where it stopped, then confirm it picked the work back up.
 
 Each task keeps at most one thread. The check-in ends on a table of task, thread state, deferrals and their reasons, PR and action taken.
@@ -92,4 +91,4 @@ Done when every task and the check-in appear in `list_scheduled_tasks` with the 
 
 ## Report
 
-A table of time, task, provider, branch and merge policy, the latest start time, the check-in time, plus anything the user must keep true while away, such as the machine staying awake.
+A table of time, task, provider and branch, the latest start time, the check-in time, plus anything the user must keep true while away, such as the machine staying awake.
