@@ -11,9 +11,9 @@
 //   open <url>            open a new tab and make it current
 //   goto <url>            navigate the current tab
 //   tabs                  list open tabs; use <id> makes one current
-//   snapshot [--all]      text plus numbered form elements, scoped to an open dialog unless --all
+//   snapshot [--all]      text plus numbered visible form elements, scoped to an open dialog unless --all
 //   click <ref>           real mouse click on an element from the last snapshot; reports whether a dialog is open
-//   fill <ref> <text>     replace an input or textarea's text
+//   fill <ref> <text>     replace an input or textarea's text, or set a date-like input's value
 //   select <ref> <label>  choose a native <select> option by its visible label
 //   upload <ref> <file>   set a file input's file
 //   press <key>           Enter, Tab, Escape, ArrowDown, ArrowUp or Backspace
@@ -148,30 +148,51 @@ function waylandDisplay() {
   return socket;
 }
 
-const element = (ref) => `document.querySelector('[data-ja-ref="${Number(ref)}"]')`;
+/** Page JS: querySelectorAll that also searches open shadow roots. */
+const DEEP = `const deepAll = (root, selector) => {
+  const found = [...root.querySelectorAll(selector)];
+  for (const el of root.querySelectorAll('*')) if (el.shadowRoot) found.push(...deepAll(el.shadowRoot, selector));
+  return found;
+};`;
 
-/** Runs in the page: numbers visible form elements and returns them with readable text. */
+const element = (ref) => `(() => { ${DEEP} return deepAll(document, '[data-ja-ref="${Number(ref)}"]')[0] ?? null; })()`;
+
+/** Runs in the page: numbers visible form elements, including those in open shadow roots, and returns them with readable text. */
 const SNAPSHOT = (all) => `(() => {
+  ${DEEP}
   const visible = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
   const dialogs = ${DIALOGS};
   const root = ${all} || dialogs.length === 0 ? document.body : dialogs.at(-1);
   const clean = (s) => (s ?? '').replace(/\\s+/g, ' ').trim();
   const choice = (el) => el.type === 'radio' || el.type === 'checkbox';
+  // A styled radio or checkbox often hides its input, so judge it by its label.
+  const shown = (el) => {
+    const box = choice(el) ? (el.labels?.[0] ?? el.parentElement ?? el) : el;
+    if (!visible(box) || box.closest('[inert]')) return false;
+    if (!box.checkVisibility({ opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })) return false;
+    const r = box.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0 || r.right + scrollX <= 0 || r.bottom + scrollY <= 0) return false;
+    for (let up = box.parentElement; up; up = up.parentElement) {
+      const clip = up.getBoundingClientRect();
+      if (getComputedStyle(up).overflow !== 'visible' && (clip.width === 0 || clip.height === 0)) return false;
+    }
+    return true;
+  };
   const labelOf = (el) => clean(
     (choice(el) && [...(el.labels ?? [])].map((l) => l.innerText).join(' ')) ||
     el.getAttribute('aria-label') ||
     [...(el.labels ?? [])].map((l) => l.innerText).join(' ') ||
-    (el.getAttribute('aria-labelledby') ?? '').split(' ').map((id) => document.getElementById(id)?.innerText ?? '').join(' ') ||
+    (el.getAttribute('aria-labelledby') ?? '').split(' ').map((id) => (el.getRootNode().getElementById?.(id) ?? document.getElementById(id))?.innerText ?? '').join(' ') ||
     el.placeholder || el.innerText || el.value || el.name || el.title
   ).slice(0, 160);
-  document.querySelectorAll('[data-ja-ref]').forEach((el) => el.removeAttribute('data-ja-ref'));
+  deepAll(document, '[data-ja-ref]').forEach((el) => el.removeAttribute('data-ja-ref'));
   const selector = 'input, textarea, select, button, a[href], [role=button], [role=checkbox], [role=radio], [role=combobox], [role=option], [role=link], [role=switch], [contenteditable=true]';
   const elements = [];
   // File inputs often sit outside the modal that uses them, so they are always included.
-  const candidates = new Set([...root.querySelectorAll(selector), ...document.querySelectorAll('input[type=file]')]);
+  const candidates = new Set([...deepAll(root, selector), ...deepAll(document, 'input[type=file]')]);
   for (const el of candidates) {
     const file = el.type === 'file';
-    if (el.type === 'hidden' || (!file && !visible(el))) continue;
+    if (el.type === 'hidden' || (!file && !shown(el))) continue;
     const ref = elements.length + 1;
     el.setAttribute('data-ja-ref', ref);
     const item = { ref, tag: el.tagName.toLowerCase(), label: labelOf(el) };
@@ -301,6 +322,13 @@ const commands = {
     const found = await evaluate(`(() => {
       const el = ${element(ref)};
       if (!el) return false;
+      // Date-like inputs take no typed text, so set their value directly, such as 2027-07 for a month.
+      if (el.tagName === 'INPUT' && ['date', 'month', 'week', 'time', 'datetime-local', 'color', 'range'].includes(el.type)) {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(text)});
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return 'set';
+      }
       el.scrollIntoView({ block: 'center' });
       el.focus();
       if (el.isContentEditable) document.execCommand('selectAll');
@@ -308,9 +336,11 @@ const commands = {
       return true;
     })()`);
     if (!found) fail(`No element ${ref}. Take a new snapshot.`);
-    await send('Input.dispatchKeyEvent', { type: 'keyDown', ...KEYS.Backspace });
-    await send('Input.dispatchKeyEvent', { type: 'keyUp', ...KEYS.Backspace });
-    if (text) await send('Input.insertText', { text });
+    if (found !== 'set') {
+      await send('Input.dispatchKeyEvent', { type: 'keyDown', ...KEYS.Backspace });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', ...KEYS.Backspace });
+      if (text) await send('Input.insertText', { text });
+    }
     await sleep(500);
     const value = await evaluate(`(${element(ref)}?.value ?? ${element(ref)}?.innerText ?? '')`);
     out({ ok: true, ref: Number(ref), value });

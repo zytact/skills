@@ -18,9 +18,9 @@ This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL
 B=<this skill's folder>/scripts/browser.mjs
 node $B start                 # refresh the profile copy and launch
 node $B open <url>            # new tab, becomes current
-node $B snapshot              # page text plus numbered elements; scoped to an open modal, --all for the whole page
+node $B snapshot              # page text plus numbered visible elements, shadow DOM included; scoped to an open modal, --all for the whole page
 node $B click <ref>            # prints dialog: true when a modal is open after the click
-node $B fill <ref> <text>     # replaces the field's text, prints the value it now holds
+node $B fill <ref> <text>     # replaces the field's text, prints the value it now holds; a month input takes 2027-07
 node $B select <ref> <label>  # native <select> only; for custom dropdowns click, snapshot, click the option
 node $B upload <ref> <file>   # file inputs show in snapshots even when hidden
 node $B press Enter           # also Tab, Escape, ArrowDown, ArrowUp, Backspace
@@ -131,7 +131,7 @@ For each kept listing, one at a time:
    - Short free-text answers, up to about 3 sentences, you write yourself from facts in `resume.yaml` and the listing. Never claim anything the resume does not show. A longer one, such as "explain the projects you have done", you draft for the user; see Drafts.
    - Easy Apply runs over several pages. Fill, click Next or Review, snapshot, repeat.
 5. On the last page before submit, snapshot and check every field against what you meant to send. If it shows a captcha, such as an "I'm not a robot" checkbox or a puzzle, do not submit. Stop on the job for a captcha handoff.
-6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. If nothing confirms within 60 seconds, do not resubmit. If the page loads a captcha script (`eval` for a `script[src]` containing `recaptcha`, `hcaptcha` or `turnstile`), the captcha most likely rejected it. Stop on the job for a captcha handoff. Otherwise mark the job `interrupted`, as Log describes.
+6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. A Submit `click` can do nothing: note `performance.getEntriesByType('resource').length` with `eval` before it, and if the page is unchanged and the count has not grown, `eval` `requestSubmit()` on the button's form once. If nothing confirms within 60 seconds of a submit that did send, do not resubmit. If the page loads a captcha script (`eval` for a `script[src]` containing `recaptcha`, `hcaptcha` or `turnstile`), the captcha most likely rejected it. Stop on the job for a captcha handoff. Otherwise mark the job `interrupted`, as Log describes.
 7. Log it, as described below.
 8. `close` the tab. On a scheduled run, run the usage gate before the next listing, then wait 3 to 6 minutes.
 
