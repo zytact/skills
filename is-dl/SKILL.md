@@ -1,12 +1,12 @@
 ---
 name: is-dl
-description: Drive the is-dl CLI to scrape LinkedIn, Unstop and Y Combinator listings, filter out unpaid roles and ones already applied to or already shown, judge fit by reading descriptions, keep the documents and notes attached to a job, and build a tailored one-page resume PDF. Use when asked to find jobs or internships, triage scraped listings, save a hiring doc or note about a role, log an application, or build a resume variant.
+description: Drive the is-dl CLI to scrape LinkedIn, Unstop, Y Combinator and Wellfound listings, filter out unpaid roles and ones already applied to or already shown, judge fit by reading descriptions, keep the documents and notes attached to a job, and build a tailored one-page resume PDF. Use when asked to find jobs or internships, triage scraped listings, save a hiring doc or note about a role, log an application, or build a resume variant.
 disable-model-invocation: true
 ---
 
 # is-dl
 
-`is-dl` searches LinkedIn, Unstop and Y Combinator, filters listings on facts, tracks what has been applied to, keeps the text attached to a job, and builds tailored resume PDFs. It never submits an application. Search, filter, log, build a PDF. A human presses send.
+`is-dl` searches LinkedIn, Unstop, Y Combinator and Wellfound, filters listings on facts, tracks what has been applied to, keeps the text attached to a job, and builds tailored resume PDFs. It never submits an application. Search, filter, log, build a PDF. A human presses send.
 
 Every command takes `--json`, which puts one JSON document on stdout and all logs on stderr. Always pass it. Parse stdout only.
 
@@ -26,15 +26,15 @@ Every command takes `--json`, which puts one JSON document on stdout and all log
 
 Exit 3 and 4 need a human or a one-line fix. Never retry them in a loop.
 
-Both concern LinkedIn. In a default two-source search they surface inside `meta.sources[]` instead of as an exit code, because Unstop still succeeded.
+Both concern LinkedIn. In a default search they surface inside `meta.sources[]` instead of as an exit code, because the other sources still succeeded.
 
 Run `is-dl doctor --json` first if anything looks wrong. It reports node, playwright, the browser, the session and the resolved paths.
 
 ## Sources
 
-`search` queries LinkedIn, Unstop and Y Combinator together by default. `--source linkedin`, `--source unstop`, `--source ycombinator` or a comma-separated subset scopes it.
+`search` queries LinkedIn, Unstop, Y Combinator and Wellfound together by default. `--source linkedin`, `unstop`, `ycombinator`, `wellfound` or a comma-separated subset scopes it.
 
-**Exit 0 does not mean every source ran.** One board failing is normal rather than an error: LinkedIn needs a stored session, Unstop and Y Combinator need none, so a machine that never ran `is-dl login` still returns Unstop results and exits 0. Read `meta.sources[]` before trusting a count.
+**Exit 0 does not mean every source ran.** One board failing is normal rather than an error: LinkedIn needs a stored session and the others need none, so a machine that never ran `is-dl login` still returns their results and exits 0. Read `meta.sources[]` before trusting a count.
 
 ```json
 "sources": [
@@ -75,6 +75,20 @@ is-dl search -k software --source ycombinator --remote-only --ycombinator-skip-u
 ```
 
 A job carries `companyName`, `locationText`, `descriptionText`, `requirementsText` (experience, visa, skills, batch) and `applyUrl`. Applying through `applyUrl` needs a signed-in Work at a Startup account. Most listings are `Full-time` with a US salary range in `pay.amount`. A role page with no `data-page` or `jobPostings` fails the source with `Y Combinator may have changed its page format.`
+
+### Wellfound
+
+No auth, no browser.
+
+Keywords are ignored. `--wellfound-roles` picks the role pages, `software-engineer` by default; `--help` lists the slugs. Each role reads at most 3 pages of about 35 listings. `-l` picks Wellfound's page for that place, written as its slug: `-l India` reads `/role/l/<role>/india`, and `-l Bangalore` works too. A place with no page, such as `Bangalore, India`, fails the source with exit 2 instead of reading a broader page; in a mixed search only wellfound is marked failed in `meta.sources[]`. `-l Remote`, or `--remote-only` with no location, reads the remote page. `--job-type`, `--remote-only`, the exclude flags and `blocked-companies` all apply, and `--wellfound-max-experience <years>` drops listings whose minimum experience is above it.
+
+```bash
+is-dl search -k engineer --source wellfound -l India --wellfound-max-experience 1 --json
+```
+
+A listing that states no minimum counts as 0 years, so senior roles get past the ceiling. Check the title. `pay.amount` holds the listing's compensation as yearly figures, so `₹9.6L – ₹12L` becomes INR 960000 to 1200000. `requirementsText` carries the experience, equity and company lines. Applying needs a signed-in Wellfound account.
+
+The config keys `wellfound-roles` and `wellfound-max-experience`, or the env vars `IS_DL_WELLFOUND_ROLES` and `IS_DL_WELLFOUND_MAX_EXPERIENCE`, set the defaults.
 
 ## Finding listings
 
@@ -131,7 +145,7 @@ When reporting, lead with the role, company, pay kind and link. Flag unpaid, tok
 
 ## Application log
 
-Append-only JSONL. The last record for a job is its current state, keyed by board and id because the two boards hand out colliding numeric ids.
+Append-only JSONL. The last record for a job is its current state, keyed by board and id because boards hand out colliding numeric ids.
 
 Log an application immediately after the human confirms they sent it, never before. This is what makes `--exclude-applied` work, so skipping it degrades every future search.
 
@@ -170,7 +184,7 @@ Editing is for correcting a note you saved wrong, so a truncated paste or a wron
 
 `notes attach` is for anything that is not text. It copies the bytes unchanged, so a PDF brief, a docx take-home or a screenshot keeps its original form and name. Reach for it when the document only makes sense as a file; use `notes add` when the words are the point, since only note bodies come back through `notes show`.
 
-`notes add` reads the board from the run that surfaced the job, so anything from a search needs no `--source`. A job id from outside is-dl needs `--source linkedin`, `unstop` or `ycombinator`, otherwise the note has nowhere to live.
+`notes add` reads the board from the run that surfaced the job, so anything from a search needs no `--source`. A job id from outside is-dl needs `--source linkedin`, `unstop`, `ycombinator` or `wellfound`, otherwise the note has nowhere to live.
 
 Notes are independent of the application log, which is deliberate. Note a role while deciding, before there is anything to log. `apps show <jobId>` lists what a job has, and `notes show` prints the bodies.
 
@@ -234,6 +248,6 @@ is-dl login          # needs a real terminal, refuses without a TTY
 is-dl doctor --json
 ```
 
-Both steps are for LinkedIn. Unstop works on a bare machine, so `--source unstop` is the way to return results while a human is still around to log in.
+Both steps are for LinkedIn. The other sources work on a bare machine, so `--source unstop,ycombinator,wellfound` returns results while a human is still around to log in.
 
 Resume builds need `tectonic` on PATH. `is-dl doctor` reports whether it is present. Never install it automatically and never run sudo.
