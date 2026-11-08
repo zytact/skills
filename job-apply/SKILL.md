@@ -133,7 +133,7 @@ For each kept listing, one at a time:
 5. On the last page before submit, snapshot and check every field against what you meant to send. If it shows a captcha, such as an "I'm not a robot" checkbox or a puzzle, do not submit. Stop on the job for a captcha handoff.
 6. Submit, then snapshot and confirm the page says the application was sent. Without that confirmation it did not happen. A Submit `click` can do nothing: note `performance.getEntriesByType('resource').length` with `eval` before it, and if the page is unchanged and the count has not grown, `eval` `requestSubmit()` on the button's form once. If nothing confirms within 60 seconds of a submit that did send, do not resubmit. If the page loads a captcha script (`eval` for a `script[src]` containing `recaptcha`, `hcaptcha` or `turnstile`), the captcha most likely rejected it. Stop on the job for a captcha handoff. Otherwise mark the job `interrupted`, as Log describes.
 7. Log it, as described below.
-8. `close` the tab. On a scheduled run, run the usage gate before the next listing, then wait 3 to 6 minutes.
+8. `close` the tab. On a scheduled run, run the usage gate before the next listing.
 
 `node $B stop` when the run ends. Leave a visible browser alone; it is the user's until they say they are done.
 
