@@ -230,10 +230,12 @@ The user defends these answers in interviews, so the note has to say exactly wha
 End every run with:
 
 - Each application: company, role, link, variant, and any answer you wrote yourself.
-- Each stopped job and what it needs from the user.
-- Each drafted job, from every run so far: company, role, the question for a form answer, and the draft word for word. Ask the user to approve or change each one. Above each draft, so the user can judge the company, put 2 or 3 sentences on what it does, with its stage, funding or size when stated, and links to the job, the company's website and its LinkedIn page. For a Y Combinator company, fetch `https://www.ycombinator.com/companies/<slug>` with `curl`; its `data-page` JSON has `one_liner`, `website` and `linkedin_url`. For a LinkedIn job, use the company link on the listing and the website its page states.
-- Each interrupted job, from every run so far: link and what was sent. Ask whether it went through.
+- Each job waiting on the user, listed once: every `stopped`, `drafted` and `interrupted` entry in `pending.json`. One carried over unchanged from an earlier run gets one line: company, role, link and what it needs. One added or changed this run gets the detail below.
+- A new stopped job: what it needs from the user.
+- A new drafted job: company, role, the question for a form answer or the recipient and subject for an email, and the draft word for word. Ask the user to approve or change it. Above the draft, so the user can judge the company, put 2 or 3 sentences on what it does, with its stage, funding or size when stated, and links to the job, the company's website and its LinkedIn page. For a Y Combinator company, fetch `https://www.ycombinator.com/companies/<slug>` with `curl`; its `data-page` JSON has `one_liner`, `website` and `linkedin_url`. For a LinkedIn job, use the company link on the listing and the website its page states.
+- A new interrupted job: link and what was sent. Ask whether it went through.
 - Listings you rejected, with one line each on why, and each pending entry removed or moved to a repost because its listing closed.
 - How many of the run's 5 you applied to.
 - Each script you added to or changed in `~/.local/share/job-apply/scripts/`.
 - When the usage gate deferred the run: the utilization, the reset time, and when the continuation fires.
+
