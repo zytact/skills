@@ -87,7 +87,7 @@ A search takes 2 to 5 minutes, sometimes more, and a full 50-listing run can tak
 
 LinkedIn searches one place at a time. It has no worldwide option, and `-l Worldwide` falls back to the account's country. Use these locations, one search each: `India`, `United States`, `Europe`. Run LinkedIn searches one at a time, extra roles included: start the next only after the previous one finishes. Each opens its own logged-in browser on the same LinkedIn account, and concurrent ones fail with job-list and `page.goto` timeouts.
 
-When a search fails with a navigation or job-list timeout, run it once more. If the retry fails too, skip that location for this run and say so in the report. Never retry a third time, and never retry exit 3 or 4.
+When a search fails with a navigation or job-list timeout, run it once more with `--timeout 60000`. If the retry fails too, skip that location for this run and say so in the report. Never retry a third time, and never retry exit 3 or 4.
 
 Search software engineer in all three locations first. LinkedIn's search matches meaning, so a second role in the same location mostly repeats the first search's listings and then returns on-site ones. Only if you are still short of candidates, search one more role across the three locations, in this order: full stack developer, AI engineer, forward deployed engineer. Skip Unstop. A search can return the same `jobId` twice; keep one.
 
