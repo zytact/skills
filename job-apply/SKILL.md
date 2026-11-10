@@ -72,9 +72,7 @@ A run the user starts by hand, and every trial, does not defer. Over the thresho
 1. On a scheduled run, the usage gate. If it trips, do nothing else.
 2. `is-dl doctor --json`. Exit 3 means the is-dl LinkedIn session expired: stop and tell the user to run `is-dl login`.
 3. Read `~/.config/is-dl/answers.md`. It holds every fact you may put in a form. The phone number is in `$APPLICANT_PHONE`. If either is missing, set it up as "First run on a machine" says.
-4. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". If it is signed out, stop and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
-5. Read `~/.local/state/job-apply/pending.json` if it exists, and check every entry, whatever its status, for a closed listing: the listing or its apply page says it is closed or no longer accepting applications, or is gone. A Y Combinator job has closed when its `id` is missing from the company's `jobPostings` (see Apply step 2). When LinkedIn has a repost by the same company with the same role, put the repost's `jobId` and `url` in the entry and keep it. Otherwise remove the entry as Log describes for a rejected job, without asking the user.
-6. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
+4. Run the searches in Find. Start the browser only after the last LinkedIn search finishes; see Browser checks.
 
 ## Find
 
@@ -85,7 +83,7 @@ is-dl search -k "<role>" --source linkedin -l "<location>" --remote-only \
 
 A search takes 2 to 5 minutes, sometimes more, and a full 50-listing run can take 50. Run each search as its own background job with a 2-hour timeout, and read its output file when the job finishes. A foreground or default-timeout job gets killed at 30 minutes and loses the listings it had collected.
 
-LinkedIn searches one place at a time. It has no worldwide option, and `-l Worldwide` falls back to the account's country. Use these locations, one search each: `India`, `United States`, `Europe`. Run LinkedIn searches one at a time, extra roles included: start the next only after the previous one finishes. Each opens its own logged-in browser on the same LinkedIn account, and concurrent ones fail with job-list and `page.goto` timeouts.
+LinkedIn searches one place at a time. It has no worldwide option, and `-l Worldwide` falls back to the account's country. Use these locations, one search each: `India`, `United States`, `Europe`. Run LinkedIn searches one at a time, extra roles included: start the next only after the previous one finishes. Each opens its own logged-in browser on the same LinkedIn account, and concurrent ones fail with job-list and `page.goto` timeouts. Helium is signed in to that account too, so it opens no LinkedIn page while a LinkedIn search runs.
 
 When a search fails with a navigation or job-list timeout, run it once more with `--timeout 60000`. If the retry fails too, skip that location for this run and say so in the report. Never retry a third time, and never retry exit 3 or 4.
 
@@ -124,6 +122,14 @@ An after-graduation listing is an on-site or hybrid role the user would start in
 Hours decide. Keep a listing when its hours fit the user's, as `answers.md` states them: flexible or async hours, part-time, or up to about 40 hours a week. Skip it when it needs more, or fixed working hours during the user's weekday classes. A listing that states no hours, or only says `Full-time`, stays in. If a form asks about hours or a start date, answer from `answers.md`.
 
 Fewer good listings than the limit is fine. Never pad.
+
+## Browser checks
+
+Once every LinkedIn search has finished, extra roles included:
+
+1. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". If it is signed out, stop and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
+2. Read `~/.local/state/job-apply/pending.json` if it exists, and check every entry, whatever its status, for a closed listing: the listing or its apply page says it is closed or no longer accepting applications, or is gone. A Y Combinator job has closed when its `id` is missing from the company's `jobPostings` (see Apply step 2). When LinkedIn has a repost by the same company with the same role, put the repost's `jobId` and `url` in the entry and keep it. Otherwise remove the entry as Log describes for a rejected job, without asking the user.
+3. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
 
 ## Apply
 
