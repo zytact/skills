@@ -294,24 +294,30 @@ const commands = {
     if (!WSL && !VISIBLE && spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
     const synced = syncProfile();
     const flags = [`--user-data-dir=${WSL ? toWindows(PROFILE) : PROFILE}`, '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'];
-    if (WSL && VISIBLE) {
-      spawn(BROWSER, flags, { cwd: '/mnt/c', detached: true, stdio: 'ignore' }).unref();
-    } else if (WSL) {
-      // A desktop nobody looks at counts as occluded, so keep Helium from pausing its rendering there.
-      const hidden = [...flags, '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
-      const commandLine = [toWindows(BROWSER), ...hidden].map((arg) => `"${arg}"`).join(' ');
-      const script = toWindows(join(dirname(fileURLToPath(import.meta.url)), 'hidden-desktop.ps1'));
-      const launch = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, Buffer.from(commandLine).toString('base64')], { cwd: '/mnt/c', encoding: 'utf8' });
-      if (launch.status !== 0) fail(`Hidden desktop launch failed: ${launch.stderr.trim()}`);
-    } else {
-      // Without WAYLAND_DISPLAY and with ozone on x11, the hidden window opens on Xvfb, never on the user's screen.
-      const { WAYLAND_DISPLAY, ...env } = process.env;
-      const child = VISIBLE
-        ? spawn(BROWSER, ['--ozone-platform=wayland', ...flags], { detached: true, stdio: 'ignore', env: { ...env, WAYLAND_DISPLAY: waylandDisplay() } })
-        : spawn('xvfb-run', ['-a', '-s', '-screen 0 1280x900x24', BROWSER, '--ozone-platform=x11', ...flags], { detached: true, stdio: 'ignore', env });
-      child.unref();
+    const launch = () => {
+      if (WSL && VISIBLE) {
+        spawn(BROWSER, flags, { cwd: '/mnt/c', detached: true, stdio: 'ignore' }).unref();
+      } else if (WSL) {
+        // A desktop nobody looks at counts as occluded, so keep Helium from pausing its rendering there.
+        const hidden = [...flags, '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
+        const commandLine = [toWindows(BROWSER), ...hidden].map((arg) => `"${arg}"`).join(' ');
+        const script = toWindows(join(dirname(fileURLToPath(import.meta.url)), 'hidden-desktop.ps1'));
+        const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, Buffer.from(commandLine).toString('base64')], { cwd: '/mnt/c', encoding: 'utf8' });
+        if (result.status !== 0) fail(`Hidden desktop launch failed: ${result.stderr.trim()}`);
+      } else {
+        // Without WAYLAND_DISPLAY and with ozone on x11, the hidden window opens on Xvfb, never on the user's screen.
+        const { WAYLAND_DISPLAY, ...env } = process.env;
+        const child = VISIBLE
+          ? spawn(BROWSER, ['--ozone-platform=wayland', ...flags], { detached: true, stdio: 'ignore', env: { ...env, WAYLAND_DISPLAY: waylandDisplay() } })
+          : spawn('xvfb-run', ['-a', '-s', '-screen 0 1280x900x24', BROWSER, '--ozone-platform=x11', ...flags], { detached: true, stdio: 'ignore', env });
+        child.unref();
+      }
+    };
+    // Windows Helium sometimes crashes during startup, so a launch that never opens its port gets one retry.
+    for (let attempt = 0; attempt < 2 && !activePort(); attempt++) {
+      launch();
+      for (let i = 0; i < 120 && !activePort(); i++) await sleep(250);
     }
-    for (let i = 0; i < 240 && !activePort(); i++) await sleep(250);
     if (!activePort()) fail('Browser did not start.');
     out({ ok: true, running: true, synced, ...(!synced && { note: 'Helium is open, so this run uses the profile copy from its last start.' }) });
   },
