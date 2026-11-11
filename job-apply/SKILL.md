@@ -199,7 +199,7 @@ Claim only what `resume.yaml` and `answers.md` show. For a form answer, answer t
 
 #### Email drafts
 
-Draft from the account whose address is the contact email in `resume.yaml`, `that.zytact@gmail.com`. `open https://mail.google.com/mail/?authuser=<address>`; the tab title must end with `<address> - Gmail`. If it does not, that account is not signed in: stop on every email job this run and tell the user to sign in to it in Helium.
+Draft from the account whose address is the contact email in `resume.yaml`. `open https://mail.google.com/mail/?authuser=<address>`; the tab title must end with `<address> - Gmail`. If it does not, that account is not signed in: stop on every email job this run and tell the user to sign in to it in Helium.
 
 1. `goto https://mail.google.com/mail/?authuser=<address>&view=cm&fs=1&to=<to>&su=<subject>&body=<body>`, each value URL-encoded, newlines as `%0A`. The subject follows the listing's instructions; without any, use `<role> application - <name>`.
 2. `snapshot` once the page settles, and `upload` the built PDF to the `Filedata` file input.
