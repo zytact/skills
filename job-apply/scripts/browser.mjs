@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Drives a private Helium for job applications over the DevTools protocol.
 // The browser runs on a copy of the user's main Helium profile, so it carries their
-// logins without touching the running browser. It runs in a real window on a virtual
-// X display, since sites' captchas reject headless browsers. Every command prints one JSON line.
+// logins without touching the running browser. It runs in a real window the user never sees,
+// since sites' captchas reject headless browsers: on a virtual X display on Linux, and on WSL
+// on a hidden Windows desktop (hidden-desktop.ps1). Every command prints one JSON line.
 // With JOB_BROWSER_VISIBLE=1, every command drives a second copy whose window opens on the
 // user's screen instead, so the user can finish a form by hand while runs keep the hidden one.
 //
@@ -21,17 +22,27 @@
 //   shot                  save a screenshot, print its path
 //   close                 close the current tab
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const BROWSER = process.env.JOB_BROWSER ?? '/opt/helium/helium';
-const SOURCE = process.env.JOB_BROWSER_SOURCE ?? join(homedir(), '.config/net.imput.helium');
+// On WSL the browser is Windows Helium, and Windows tools warn or fail when started from a WSL directory.
+const WSL = Boolean(process.env.WSL_DISTRO_NAME);
+const windows = (command, ...args) => spawnSync(command, args, { cwd: '/mnt/c', encoding: 'utf8' }).stdout.trim();
+const toWindows = (path) => windows('wslpath', '-w', path);
+const LOCAL_APP_DATA = WSL ? windows('wslpath', windows('cmd.exe', '/d', '/c', 'echo %LOCALAPPDATA%')) : null;
+
+const BROWSER = process.env.JOB_BROWSER ?? (WSL ? join(LOCAL_APP_DATA, 'imput/Helium/Application/chrome.exe') : '/opt/helium/helium');
+const SOURCE = process.env.JOB_BROWSER_SOURCE ?? (WSL ? join(LOCAL_APP_DATA, 'imput/Helium/User Data') : join(homedir(), '.config/net.imput.helium'));
 const STATE = join(homedir(), '.local/state/job-apply');
 const VISIBLE = process.env.JOB_BROWSER_VISIBLE === '1';
-const PROFILE = join(STATE, VISIBLE ? 'helium-visible' : 'helium-profile');
+// Windows Helium cannot run a profile from the WSL filesystem, so on WSL the copies live on the Windows side.
+const PROFILE = join(WSL ? join(LOCAL_APP_DATA, 'job-apply') : STATE, VISIBLE ? 'helium-visible' : 'helium-profile');
 const TAB_FILE = join(STATE, VISIBLE ? 'tab-visible' : 'tab');
 const SHOTS = join(STATE, 'shots');
+mkdirSync(STATE, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const out = (value) => console.log(JSON.stringify(value));
@@ -44,7 +55,7 @@ const fail = (message) => {
 async function connect(url) {
   const ws = new WebSocket(url);
   await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('connect timeout')), 3000);
+    const timer = setTimeout(() => reject(new Error('connect timeout')), 10000);
     ws.onopen = () => (clearTimeout(timer), resolve());
     ws.onerror = () => (clearTimeout(timer), reject(new Error('connect failed')));
   });
@@ -67,15 +78,40 @@ async function connect(url) {
   };
 }
 
-function endpoint() {
+function activePort() {
   const file = join(PROFILE, 'DevToolsActivePort');
   if (!existsSync(file)) return null;
   const [port, path] = readFileSync(file, 'utf8').split('\n');
-  return `ws://127.0.0.1:${port.trim()}${path.trim()}`;
+  return { port: port.trim(), path: path.trim() };
+}
+
+/** WSL cannot reach Windows 127.0.0.1, so a local port relays each connection through one powershell.exe. */
+function tunnel(port) {
+  const relay = `$client = [Net.Sockets.TcpClient]::new('127.0.0.1', ${Number(port)})
+$stream = $client.GetStream()
+$null = [Console]::OpenStandardInput().CopyToAsync($stream)
+$stream.CopyTo([Console]::OpenStandardOutput())`;
+  const encoded = Buffer.from(relay, 'utf16le').toString('base64');
+  const server = createServer((socket) => {
+    const shell = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], { cwd: '/mnt/c', stdio: ['pipe', 'pipe', 'ignore'] });
+    socket.pipe(shell.stdin);
+    shell.stdout.pipe(socket);
+    socket.on('error', () => shell.kill());
+    socket.on('close', () => shell.kill());
+    shell.on('exit', () => socket.destroy());
+  });
+  server.unref();
+  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+}
+
+async function endpoint() {
+  const active = activePort();
+  if (!active) return null;
+  return `ws://127.0.0.1:${WSL ? await tunnel(active.port) : active.port}${active.path}`;
 }
 
 async function browser() {
-  const url = endpoint();
+  const url = await endpoint();
   if (!url) fail('Browser not running. Run start first.');
   try {
     return await connect(url);
@@ -127,16 +163,37 @@ async function where(evaluate) {
   return evaluate(`({ url: location.href, title: document.title, dialog: ${DIALOGS}.length > 0 })`);
 }
 
-/** Copies the main profile's Default folder, minus caches and history, into the private copy, which starts with no restored tabs. */
+/** Whether a running browser holds the profile's cookie file locked, as Windows Helium does. */
+function locked(profile) {
+  try {
+    closeSync(openSync(join(profile, 'Default/Network/Cookies'), 'r'));
+    return false;
+  } catch (error) {
+    return error.code === 'EACCES' || error.code === 'EBUSY';
+  }
+}
+
+/**
+ * Copies the main profile's Default folder, minus caches and history, into the private copy, which starts with no restored tabs.
+ * While the main browser locks its files, a copy that does not exist yet is made from the other private copy instead,
+ * and an existing one is used as it is. Returns whether it copied from the main profile.
+ */
 function syncProfile() {
   mkdirSync(join(PROFILE, 'Default'), { recursive: true });
-  for (const name of ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'DevToolsActivePort', 'Default/Sessions', 'Default/Sessions_Encrypted']) {
+  for (const name of ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'lockfile', 'DevToolsActivePort', 'Default/Sessions', 'Default/Sessions_Encrypted']) {
     rmSync(join(PROFILE, name), { recursive: true, force: true });
   }
-  writeFileSync(join(PROFILE, 'Local State'), readFileSync(join(SOURCE, 'Local State')));
+  let from = SOURCE;
+  if (locked(SOURCE)) {
+    if (existsSync(join(PROFILE, 'Local State'))) return false;
+    from = join(dirname(PROFILE), VISIBLE ? 'helium-profile' : 'helium-visible');
+    if (!existsSync(join(from, 'Local State')) || locked(from)) fail('Helium is open, so its profile cannot be copied yet. Ask the user to close Helium, then run start again.');
+  }
+  writeFileSync(join(PROFILE, 'Local State'), readFileSync(join(from, 'Local State')));
   const exclude = ['IndexedDB', 'Service Worker', '*Cache*', 'blob_storage', 'File System', 'Extensions', 'History*', 'Favicons*', 'LOCK', 'Sessions'];
-  const rsync = spawnSync('rsync', ['-a', '--delete', ...exclude.flatMap((e) => ['--exclude', e]), `${SOURCE}/Default/`, `${PROFILE}/Default/`]);
+  const rsync = spawnSync('rsync', ['-a', '--delete', ...exclude.flatMap((e) => ['--exclude', e]), `${from}/Default/`, `${PROFILE}/Default/`]);
   if (rsync.status !== 0) fail(`Profile sync failed: ${rsync.stderr}`);
+  return from === SOURCE;
 }
 
 /** The user's Wayland socket. Agent shells often lack WAYLAND_DISPLAY, so fall back to the runtime dir. */
@@ -229,26 +286,38 @@ const KEYS = {
 
 const commands = {
   async start() {
-    const url = endpoint();
+    const url = await endpoint();
     if (url && (await connect(url).then((c) => (c.close(), true)).catch(() => false))) {
       return out({ ok: true, running: true });
     }
-    const flags = [`--user-data-dir=${PROFILE}`, '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'];
-    if (!VISIBLE && spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
-    syncProfile();
-    // Without WAYLAND_DISPLAY and with ozone on x11, the hidden window opens on Xvfb, never on the user's screen.
-    const { WAYLAND_DISPLAY, ...env } = process.env;
-    const child = VISIBLE
-      ? spawn(BROWSER, ['--ozone-platform=wayland', ...flags], { detached: true, stdio: 'ignore', env: { ...env, WAYLAND_DISPLAY: waylandDisplay() } })
-      : spawn('xvfb-run', ['-a', '-s', '-screen 0 1280x900x24', BROWSER, '--ozone-platform=x11', ...flags], { detached: true, stdio: 'ignore', env });
-    child.unref();
-    for (let i = 0; i < 60 && !endpoint(); i++) await sleep(250);
-    if (!endpoint()) fail('Browser did not start.');
-    out({ ok: true, running: true, synced: true });
+    if (!existsSync(BROWSER)) fail(`No browser at ${BROWSER}. Set JOB_BROWSER.`);
+    if (!WSL && !VISIBLE && spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
+    const synced = syncProfile();
+    const flags = [`--user-data-dir=${WSL ? toWindows(PROFILE) : PROFILE}`, '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'];
+    if (WSL && VISIBLE) {
+      spawn(BROWSER, flags, { cwd: '/mnt/c', detached: true, stdio: 'ignore' }).unref();
+    } else if (WSL) {
+      // A desktop nobody looks at counts as occluded, so keep Helium from pausing its rendering there.
+      const hidden = [...flags, '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
+      const commandLine = [toWindows(BROWSER), ...hidden].map((arg) => `"${arg}"`).join(' ');
+      const script = toWindows(join(dirname(fileURLToPath(import.meta.url)), 'hidden-desktop.ps1'));
+      const launch = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, Buffer.from(commandLine).toString('base64')], { cwd: '/mnt/c', encoding: 'utf8' });
+      if (launch.status !== 0) fail(`Hidden desktop launch failed: ${launch.stderr.trim()}`);
+    } else {
+      // Without WAYLAND_DISPLAY and with ozone on x11, the hidden window opens on Xvfb, never on the user's screen.
+      const { WAYLAND_DISPLAY, ...env } = process.env;
+      const child = VISIBLE
+        ? spawn(BROWSER, ['--ozone-platform=wayland', ...flags], { detached: true, stdio: 'ignore', env: { ...env, WAYLAND_DISPLAY: waylandDisplay() } })
+        : spawn('xvfb-run', ['-a', '-s', '-screen 0 1280x900x24', BROWSER, '--ozone-platform=x11', ...flags], { detached: true, stdio: 'ignore', env });
+      child.unref();
+    }
+    for (let i = 0; i < 240 && !activePort(); i++) await sleep(250);
+    if (!activePort()) fail('Browser did not start.');
+    out({ ok: true, running: true, synced, ...(!synced && { note: 'Helium is open, so this run uses the profile copy from its last start.' }) });
   },
 
   async stop() {
-    const url = endpoint();
+    const url = await endpoint();
     if (url) {
       const cdp = await connect(url).catch(() => null);
       await cdp?.send('Browser.close').catch(() => {});
@@ -368,7 +437,7 @@ const commands = {
     const { send, evaluate } = await page();
     const { result } = await send('Runtime.evaluate', { expression: element(ref) });
     if (!result.objectId) fail(`No element ${ref}. Take a new snapshot.`);
-    await send('DOM.setFileInputFiles', { files: [file], objectId: result.objectId });
+    await send('DOM.setFileInputFiles', { files: [WSL ? toWindows(file) : file], objectId: result.objectId });
     await settle(evaluate);
     out({ ok: true, ref: Number(ref), file });
   },

@@ -12,11 +12,11 @@ This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL
 
 ## The browser
 
-`scripts/browser.mjs` in this skill's folder drives a private Helium in a window on a virtual X display, never on the user's screen. It is not headless, because captchas reject headless browsers. It runs on a copy of the user's main Helium profile, so it is signed in to LinkedIn, Google and the rest. It never touches the browser the user has open. Every command prints one JSON line.
+`scripts/browser.mjs` in this skill's folder drives a private Helium in a window the user never sees: on a virtual X display on Linux, on a hidden Windows desktop on WSL. It is not headless, because captchas reject headless browsers. It runs on a copy of the user's main Helium profile, so it is signed in to LinkedIn, Google and the rest. It never touches the browser the user has open. Every command prints one JSON line.
 
 ```bash
 B=<this skill's folder>/scripts/browser.mjs
-node $B start                 # refresh the profile copy and launch
+node $B start                 # refresh the profile copy and launch; synced: false means Helium was open, so the last copy is used
 node $B open <url>            # new tab, becomes current
 node $B snapshot              # page text plus numbered visible elements, shadow DOM included; scoped to an open modal, --all for the whole page
 node $B click <ref>            # prints dialog: true when a modal is open after the click
@@ -44,8 +44,8 @@ A new machine lacks the user's private files. Set up whatever is missing, then c
 
 - **`~/.config/is-dl/answers.md`.** Copy `references/answers-template.md` from this skill's folder there. Ask the user for every `<placeholder>` in one message, fill in their answers in their words, and leave "Learned answers" empty. Take anything the resume already states, such as degree and graduation, from `resume.yaml` and ask only to confirm it. Never put the file in a git repository; if `~/.config/is-dl` is a dotfiles-managed folder, check that the repo ignores `answers.md`.
 - **`$APPLICANT_PHONE`.** Ask the user for the number with country code. Add `export APPLICANT_PHONE=<number>` to `~/.secrets`, creating it if needed, and make sure the shell profile sources it (`. "$HOME/.secrets"` in `~/.zshenv`). Never write the number anywhere else.
-- **Xvfb.** `start` needs `xvfb-run`. On Fedora it comes with `xorg-x11-server-Xvfb`.
-- **Helium.** `start` fails without Helium at `/opt/helium/helium` and a signed-in profile at `~/.config/net.imput.helium`. Tell the user to install Helium and sign in to LinkedIn in it. Set `JOB_BROWSER` or `JOB_BROWSER_SOURCE` when either lives elsewhere.
+- **Xvfb.** On Linux, `start` needs `xvfb-run`. On Fedora it comes with `xorg-x11-server-Xvfb`.
+- **Helium.** `start` fails without Helium and a signed-in profile: on Linux at `/opt/helium/helium` and `~/.config/net.imput.helium`, on WSL in Windows under `%LOCALAPPDATA%\imput\Helium`. Tell the user to install Helium and sign in to LinkedIn in it. Set `JOB_BROWSER` or `JOB_BROWSER_SOURCE` when either lives elsewhere. Windows Helium locks its profile while open, so the first `start` on WSL needs the user to close it once.
 - **is-dl.** `is-dl doctor` covers it. A missing resume (`~/.config/is-dl/resume/resume.yaml`) is the user's to supply; stop and say so.
 
 ## Usage gate
@@ -127,7 +127,7 @@ Fewer good listings than the limit is fine. Never pad.
 
 Once every LinkedIn search has finished, extra roles included:
 
-1. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". If it is signed out, stop and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
+1. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". If it is signed out, stop and tell the user to sign in to LinkedIn in Helium. Never ask for credentials. When `start` printed `synced: false`, a sign-in the user made since the last copy is missing too; say so, and that closing Helium before the next run picks it up.
 2. Read `~/.local/state/job-apply/pending.json` if it exists, and check every entry, whatever its status, for a closed listing: the listing or its apply page says it is closed or no longer accepting applications, or is gone. A Y Combinator job has closed when its `id` is missing from the company's `jobPostings` (see Apply step 2). When LinkedIn has a repost by the same company with the same role, put the repost's `jobId` and `url` in the entry and keep it. Otherwise remove the entry as Log describes for a rejected job, without asking the user.
 3. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
 
