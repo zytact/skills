@@ -1,0 +1,5 @@
+interface:
+  display_name: "Photo Editing"
+  short_description: "Edit a photo toward your reference looks"
+policy:
+  allow_implicit_invocation: false
