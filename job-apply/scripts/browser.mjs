@@ -2,8 +2,8 @@
 // Drives a private Helium for job applications over the DevTools protocol.
 // The browser runs on a copy of the user's main Helium profile, so it carries their
 // logins without touching the running browser. It runs in a real window the user never sees,
-// since sites' captchas reject headless browsers: on a virtual X display on Linux, and on WSL
-// on a hidden Windows desktop (hidden-desktop.ps1). Every command prints one JSON line.
+// since sites' captchas reject headless browsers: on a virtual X display on Linux, and on Windows
+// and WSL on a hidden Windows desktop (hidden-desktop.ps1). Every command prints one JSON line.
 // With JOB_BROWSER_VISIBLE=1, every command drives a second copy whose window opens on the
 // user's screen instead, so the user can finish a form by hand while runs keep the hidden one.
 //
@@ -28,18 +28,21 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// On WSL the browser is Windows Helium, and Windows tools warn or fail when started from a WSL directory.
+// Windows and WSL both run Windows Helium. WSL also converts paths, relays the DevTools port,
+// and starts Windows tools from /mnt/c, since they warn or fail in a WSL directory.
 const WSL = Boolean(process.env.WSL_DISTRO_NAME);
-const windows = (command, ...args) => spawnSync(command, args, { cwd: '/mnt/c', encoding: 'utf8' }).stdout.trim();
-const toWindows = (path) => windows('wslpath', '-w', path);
-const LOCAL_APP_DATA = WSL ? windows('wslpath', windows('cmd.exe', '/d', '/c', 'echo %LOCALAPPDATA%')) : null;
+const WINDOWS = WSL || process.platform === 'win32';
+const CWD = WSL ? '/mnt/c' : undefined;
+const run = (command, ...args) => spawnSync(command, args, { cwd: CWD, encoding: 'utf8' }).stdout.trim();
+const browserPath = (path) => (WSL ? run('wslpath', '-w', path) : path);
+const LOCAL_APP_DATA = WSL ? run('wslpath', run('cmd.exe', '/d', '/c', 'echo %LOCALAPPDATA%')) : process.env.LOCALAPPDATA;
 
-const BROWSER = process.env.JOB_BROWSER ?? (WSL ? join(LOCAL_APP_DATA, 'imput/Helium/Application/chrome.exe') : '/opt/helium/helium');
-const SOURCE = process.env.JOB_BROWSER_SOURCE ?? (WSL ? join(LOCAL_APP_DATA, 'imput/Helium/User Data') : join(homedir(), '.config/net.imput.helium'));
+const BROWSER = process.env.JOB_BROWSER ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/Application/chrome.exe') : '/opt/helium/helium');
+const SOURCE = process.env.JOB_BROWSER_SOURCE ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/User Data') : join(homedir(), '.config/net.imput.helium'));
 const STATE = join(homedir(), '.local/state/job-apply');
 const VISIBLE = process.env.JOB_BROWSER_VISIBLE === '1';
-// Windows Helium cannot run a profile from the WSL filesystem, so on WSL the copies live on the Windows side.
-const PROFILE = join(WSL ? join(LOCAL_APP_DATA, 'job-apply') : STATE, VISIBLE ? 'helium-visible' : 'helium-profile');
+// Windows Helium cannot run a profile from the WSL filesystem, so on Windows and WSL the copies live in %LOCALAPPDATA%.
+const PROFILE = join(WINDOWS ? join(LOCAL_APP_DATA, 'job-apply') : STATE, VISIBLE ? 'helium-visible' : 'helium-profile');
 const TAB_FILE = join(STATE, VISIBLE ? 'tab-visible' : 'tab');
 const SHOTS = join(STATE, 'shots');
 mkdirSync(STATE, { recursive: true });
@@ -93,7 +96,7 @@ $null = [Console]::OpenStandardInput().CopyToAsync($stream)
 $stream.CopyTo([Console]::OpenStandardOutput())`;
   const encoded = Buffer.from(relay, 'utf16le').toString('base64');
   const server = createServer((socket) => {
-    const shell = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], { cwd: '/mnt/c', stdio: ['pipe', 'pipe', 'ignore'] });
+    const shell = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], { cwd: CWD, stdio: ['pipe', 'pipe', 'ignore'] });
     socket.pipe(shell.stdin);
     shell.stdout.pipe(socket);
     socket.on('error', () => shell.kill());
@@ -169,7 +172,7 @@ function locked(profile) {
     closeSync(openSync(join(profile, 'Default/Network/Cookies'), 'r'));
     return false;
   } catch (error) {
-    return error.code === 'EACCES' || error.code === 'EBUSY';
+    return ['EACCES', 'EBUSY', 'EPERM'].includes(error.code);
   }
 }
 
@@ -191,8 +194,12 @@ function syncProfile() {
   }
   writeFileSync(join(PROFILE, 'Local State'), readFileSync(join(from, 'Local State')));
   const exclude = ['IndexedDB', 'Service Worker', '*Cache*', 'blob_storage', 'File System', 'Extensions', 'History*', 'Favicons*', 'LOCK', 'Sessions'];
-  const rsync = spawnSync('rsync', ['-a', '--delete', ...exclude.flatMap((e) => ['--exclude', e]), `${from}/Default/`, `${PROFILE}/Default/`]);
-  if (rsync.status !== 0) fail(`Profile sync failed: ${rsync.stderr}`);
+  // Both mirror Default and leave excluded entries in the copy alone. robocopy exits below 8 on success.
+  const copy =
+    process.platform === 'win32'
+      ? spawnSync('robocopy', [join(from, 'Default'), join(PROFILE, 'Default'), '/MIR', '/NJH', '/NJS', '/NFL', '/NDL', '/NP', '/XD', ...exclude, '/XF', ...exclude], { encoding: 'utf8' })
+      : spawnSync('rsync', ['-a', '--delete', ...exclude.flatMap((e) => ['--exclude', e]), `${from}/Default/`, `${PROFILE}/Default/`], { encoding: 'utf8' });
+  if (copy.status !== 0 && !(process.platform === 'win32' && copy.status < 8)) fail(`Profile sync failed: ${copy.stderr || copy.stdout}`);
   return from === SOURCE;
 }
 
@@ -291,18 +298,18 @@ const commands = {
       return out({ ok: true, running: true });
     }
     if (!existsSync(BROWSER)) fail(`No browser at ${BROWSER}. Set JOB_BROWSER.`);
-    if (!WSL && !VISIBLE && spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
+    if (!WINDOWS && !VISIBLE && spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
     const synced = syncProfile();
-    const flags = [`--user-data-dir=${WSL ? toWindows(PROFILE) : PROFILE}`, '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'];
+    const flags = [`--user-data-dir=${browserPath(PROFILE)}`, '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'];
     const launch = () => {
-      if (WSL && VISIBLE) {
-        spawn(BROWSER, flags, { cwd: '/mnt/c', detached: true, stdio: 'ignore' }).unref();
-      } else if (WSL) {
+      if (WINDOWS && VISIBLE) {
+        spawn(BROWSER, flags, { cwd: CWD, detached: true, stdio: 'ignore' }).unref();
+      } else if (WINDOWS) {
         // A desktop nobody looks at counts as occluded, so keep Helium from pausing its rendering there.
         const hidden = [...flags, '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
-        const commandLine = [toWindows(BROWSER), ...hidden].map((arg) => `"${arg}"`).join(' ');
-        const script = toWindows(join(dirname(fileURLToPath(import.meta.url)), 'hidden-desktop.ps1'));
-        const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, Buffer.from(commandLine).toString('base64')], { cwd: '/mnt/c', encoding: 'utf8' });
+        const commandLine = [browserPath(BROWSER), ...hidden].map((arg) => `"${arg}"`).join(' ');
+        const script = browserPath(join(dirname(fileURLToPath(import.meta.url)), 'hidden-desktop.ps1'));
+        const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, Buffer.from(commandLine).toString('base64')], { cwd: CWD, encoding: 'utf8' });
         if (result.status !== 0) fail(`Hidden desktop launch failed: ${result.stderr.trim()}`);
       } else {
         // Without WAYLAND_DISPLAY and with ozone on x11, the hidden window opens on Xvfb, never on the user's screen.
@@ -443,7 +450,7 @@ const commands = {
     const { send, evaluate } = await page();
     const { result } = await send('Runtime.evaluate', { expression: element(ref) });
     if (!result.objectId) fail(`No element ${ref}. Take a new snapshot.`);
-    await send('DOM.setFileInputFiles', { files: [WSL ? toWindows(file) : file], objectId: result.objectId });
+    await send('DOM.setFileInputFiles', { files: [browserPath(file)], objectId: result.objectId });
     await settle(evaluate);
     out({ ok: true, ref: Number(ref), file });
   },

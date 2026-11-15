@@ -12,7 +12,7 @@ This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL
 
 ## The browser
 
-`scripts/browser.mjs` in this skill's folder drives a private Helium in a window the user never sees: on a virtual X display on Linux, on a hidden Windows desktop on WSL. It is not headless, because captchas reject headless browsers. It runs on a copy of the user's main Helium profile, so it is signed in to LinkedIn, Google and the rest. It never touches the browser the user has open. Every command prints one JSON line.
+`scripts/browser.mjs` in this skill's folder drives a private Helium in a window the user never sees: on a virtual X display on Linux, on a hidden Windows desktop on Windows and WSL. It is not headless, because captchas reject headless browsers. It runs on a copy of the user's main Helium profile, so it is signed in to LinkedIn, Google and the rest. It never touches the browser the user has open. Every command prints one JSON line. The commands here are bash; on Windows, run them in Git Bash.
 
 ```bash
 B=<this skill's folder>/scripts/browser.mjs
@@ -43,9 +43,9 @@ A LinkedIn listing loads its description late. Wait about 6 seconds after `open`
 A new machine lacks the user's private files. Set up whatever is missing, then continue with the run.
 
 - **`~/.config/is-dl/answers.md`.** Copy `references/answers-template.md` from this skill's folder there. Ask the user for every `<placeholder>` in one message, fill in their answers in their words, and leave "Learned answers" empty. Take anything the resume already states, such as degree and graduation, from `resume.yaml` and ask only to confirm it. Never put the file in a git repository; if `~/.config/is-dl` is a dotfiles-managed folder, check that the repo ignores `answers.md`.
-- **`$APPLICANT_PHONE`.** Ask the user for the number with country code. Add `export APPLICANT_PHONE=<number>` to `~/.secrets`, creating it if needed, and make sure the shell profile sources it (`. "$HOME/.secrets"` in `~/.zshenv`). Never write the number anywhere else.
+- **`$APPLICANT_PHONE`.** Ask the user for the number with country code. Add `export APPLICANT_PHONE=<number>` to `~/.secrets`, creating it if needed, and make sure every shell loads it: `. "$HOME/.secrets"` in `~/.zshenv`, and on Windows the PowerShell profile too. Never write the number anywhere else.
 - **Xvfb.** On Linux, `start` needs `xvfb-run`. On Fedora it comes with `xorg-x11-server-Xvfb`.
-- **Helium.** `start` fails without Helium and a signed-in profile: on Linux at `/opt/helium/helium` and `~/.config/net.imput.helium`, on WSL in Windows under `%LOCALAPPDATA%\imput\Helium`. Tell the user to install Helium and sign in to LinkedIn in it. Set `JOB_BROWSER` or `JOB_BROWSER_SOURCE` when either lives elsewhere. Windows Helium locks its profile while open, so the first `start` on WSL needs the user to close it once.
+- **Helium.** `start` fails without Helium and a signed-in profile: on Linux at `/opt/helium/helium` and `~/.config/net.imput.helium`, on Windows and WSL under `%LOCALAPPDATA%\imput\Helium`. Tell the user to install Helium and sign in to LinkedIn in it. Set `JOB_BROWSER` or `JOB_BROWSER_SOURCE` when either lives elsewhere. Windows Helium locks its profile while open, so the first `start` on Windows or WSL needs the user to close it once.
 - **is-dl.** `is-dl doctor` covers it. A missing resume (`~/.config/is-dl/resume/resume.yaml`) is the user's to supply; stop and say so.
 
 ## Usage gate
