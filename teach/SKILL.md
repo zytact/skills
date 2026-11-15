@@ -25,6 +25,7 @@ To **persist** a variable, tell the user you are adding it to their shell config
 
 - `~/.bashrc` and `~/.zshenv`: `export NAME="<value>"`
 - `~/.config/fish/config.fish`: `set -gx NAME "<value>"`
+- On Windows, the PowerShell profile (`$PROFILE`): `$env:NAME = "<value>"`
 
 Use the value directly for the rest of the session, since the change only reaches new shells.
 
