@@ -59,13 +59,13 @@ Done when every PR is open and shows its uploaded evidence.
 
 ## 6. Merge
 
-Call T3 Code's `watch_pull_request` on every PR and end your turn. T3 wakes you when a check fails, checks pass, a comment or review lands, or the PR conflicts. A wake is news, not a merge decision. Outside T3 Code, wait with `gh pr checks --watch` and then read the comments.
+Before watching, read the full state with `gh pr checks` and `gh pr view --comments`. If CI has already finished, act on it now, as the list below says, instead of waiting for a wake. Then call T3 Code's `watch_pull_request` on every PR still open and end your turn. T3 wakes you when a check fails, checks pass, a comment or review lands, or the PR conflicts. A wake is news, not a merge decision. Outside T3 Code, wait with `gh pr checks --watch` and then read the comments.
 
 The repo's review bots are the ones that reviewed its recent merged PRs, such as CodeRabbit, Copilot or Greptile. A repo with no CI and no review bots has nothing to wait for, so go straight to the gate.
 
-On each wake, read the full state with `gh pr checks` and `gh pr view --comments`, then act on it:
+On each wake, read the full state the same way, then act on it:
 
-- A failed check, a conflict or a review comment: fix it, send the fix through step 2 and push, or reply with the reason it stays. Resolve the thread. The watch stays on, so end the turn.
+- A failed check, a conflict or a review comment: fix it, send the fix through step 2 and push, or reply with the reason it stays. Resolve the thread. A push does not end the watch. Keep it on, do not unwatch, and end the turn.
 - Checks still pending, or a review bot has not reviewed the latest push: end the turn.
 - Otherwise, judge the gate.
 
