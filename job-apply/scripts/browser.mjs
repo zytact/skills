@@ -9,6 +9,7 @@
 //
 //   start                 sync the profile copy (if stopped) and launch the browser
 //   stop                  quit the browser
+//   cdp                   print the DevTools port, for is-dl --cdp
 //   open <url>            open a new tab and make it current
 //   goto <url>            navigate the current tab
 //   tabs                  list open tabs; use <id> makes one current
@@ -338,6 +339,14 @@ const commands = {
     rmSync(join(PROFILE, 'DevToolsActivePort'), { force: true });
     rmSync(TAB_FILE, { force: true });
     out({ ok: true, running: false });
+  },
+
+  async cdp() {
+    // A tunnel would close when this command exits, so WSL has no port to hand out.
+    if (WSL) fail('WSL cannot reach Windows Helium on a lasting port.');
+    const active = activePort();
+    if (!active) fail('Browser not running. Run start first.');
+    out({ ok: true, port: active.port });
   },
 
   async open(url) {
