@@ -19,7 +19,7 @@ Every command takes `--json`, which puts one JSON document on stdout and all log
 | 0 | ok | continue |
 | 1 | error | read the message |
 | 2 | usage | fix the flags |
-| 3 | auth | stop and ask the human to run `is-dl login` |
+| 3 | auth | stop and ask the human to run `is-dl login`, or with `--cdp`, to sign in to LinkedIn in that browser |
 | 4 | dependency | run `npx playwright install chromium` |
 | 5 | aborted | the run was cancelled |
 | 6 | config | fix the config file or profile name |
@@ -116,7 +116,7 @@ Saved profiles live in config, so a repeated search is `is-dl search --profile f
 
 Companies never worth a look go in `blocked-companies` in the config file. Every source skips them while it pages, so they use no slot under `--limit`, and the log names each company it skipped. `--help` has the matching rules.
 
-LinkedIn scraping is slow, around 10 seconds per listing while each job's description loads, so a 50-listing run takes 8 minutes or more and a mixed search runs at LinkedIn's pace. Searches for different locations can run in parallel: each one launches its own browser from the saved session. Run long searches in the background with a 2-hour timeout, since a 30-minute shell limit kills them.
+LinkedIn scraping is slow, around 10 seconds per listing while each job's description loads, so a 50-listing run takes 8 minutes or more and a mixed search runs at LinkedIn's pace. Run LinkedIn searches one at a time. Concurrent ones time out and look like a bot to LinkedIn. Run long searches in the background with a 2-hour timeout, since a 30-minute shell limit kills them.
 
 `--timeout <ms>` bounds LinkedIn navigation and every wait after it: the job list, the detail pane, the description and each page turn. It defaults to 30000, and the config key `timeout` or env `IS_DL_TIMEOUT` sets it too. A slow load is the usual cause of a LinkedIn timeout, and `-l Europe` hits it most. When a search fails with `LinkedIn's job list did not appear within 30s` or a navigation timeout, retry it once with `--timeout 60000`. If that retry fails too, report the search as broken.
 
@@ -250,6 +250,6 @@ is-dl login          # needs a real terminal, refuses without a TTY
 is-dl doctor --json
 ```
 
-Both steps are for LinkedIn. The other sources work on a bare machine, so `--source unstop,ycombinator,wellfound` returns results while a human is still around to log in.
+Both steps are for LinkedIn. To use a browser that is already signed in to LinkedIn instead, start it with a DevTools port and pass `--cdp <url|port>` (or set `IS_DL_CDP`) to `search` and `doctor`. Then is-dl searches in a new tab of that browser and needs neither step. The other sources work on a bare machine, so `--source unstop,ycombinator,wellfound` returns results while a human is still around to log in.
 
 Resume builds need `tectonic` on PATH. `is-dl doctor` reports whether it is present. Never install it automatically and never run sudo.
