@@ -8,6 +8,11 @@ disable-model-invocation: true
 
 Take the task passed to `/ship` from code to filed PRs, one or a stack: implement or fix it, review it, prove it live, file, then merge if the gate passes. Each step below ends on its completion criterion. Move to the next step only once it holds.
 
+Two steps run in T3 Code `delegate_task` children, a new task for each run. Find the model IDs and options with `orchestrator_capabilities`. Outside T3 Code, or if a model is unavailable, run the step yourself and say so in the report.
+
+- Step 2 runs the `code-review` skill on Claude Opus 5.5 with effort `high`.
+- Step 4 drives on DeepSeek V4.1 Flash Free through OpenCode.
+
 ## 0. Locate the verification skill
 
 Find the project's verification skill: the project-local skill with launch/drive sections and a feature map (usually `.agents/skills/verify-*/` or `.claude/skills/verify-*/`). Several candidates, ask which one. None, stop and ask the user whether to run `/create-verification-skill` first or ship without live verification.
@@ -26,7 +31,7 @@ Done when the change does what the task asks and the project's own checks (typec
 
 ## 2. Review
 
-Invoke the `code-review` skill with the merge-base against the default branch as the fixed point. In a stack, review each layer on its own, with the layer below it as the fixed point. Fix every confirmed finding, or record why it stays.
+Run the `code-review` skill, on the model named above, with the merge-base against the default branch as the fixed point. In a stack, review each layer on its own, with the layer below it as the fixed point. Fix every confirmed finding, or record why it stays.
 
 The `code-review` skill allows 3 runs per PR, counting runs from before the PR is filed. Once they are spent, later fixes, including those from steps 3, 4 and 6, go in without another review, and the report lists them as unreviewed.
 
@@ -45,7 +50,7 @@ Done when the pass reaches its `clean` or `changed` outcome. A `blocked` outcome
 
 ## 4. Verify
 
-Use the refreshed verification skill to drive every behavior this branch changes, the way a user would. Capture the "after" evidence.
+Have the child named above use the refreshed verification skill to drive every behavior this branch changes, the way a user would, and capture the "after" evidence. Give it the skill's path, the behaviors to drive and where to save evidence. Check its evidence yourself before you trust a pass.
 
 A failure is a bug in the change. Fix it, send the fix through step 2, and drive again.
 
