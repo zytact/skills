@@ -9,8 +9,8 @@ Take the task from code to filed PRs, one or a stack: implement or fix it, revie
 
 Two steps run in T3 Code `delegate_task` children, a new task for each run. Find the model IDs and options with `orchestrator_capabilities`. Outside T3 Code, or if a model is unavailable, run the step yourself and say so in the report.
 
-- Step 2 runs the `code-review` skill on Claude Opus 5.5 with effort `high`.
-- Step 4 drives on DeepSeek V4.1 Flash Free through OpenCode.
+- Step 2 runs the `code-review` skill on Claude Opus 5.5 with effort `high`, through the CLIProxyAPI Claude instance, never the plain Claude one. On MSI that instance is "Claude (proxy)". On Fedora the default Claude instance is the proxy.
+- Step 4 drives on DeepSeek V4.1 Flash Free through the OpenCode provider.
 
 ## 0. Locate the verification skill
 
