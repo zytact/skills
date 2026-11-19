@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Night shift
 
-The user hands you a queue: tasks (usually issues), a start time for each, the skill each thread runs (usually `/ship`), and the models to use. They will be away while it runs, so every decision gets settled before they leave. Each thread runs **unattended**.
+The user hands you a queue: tasks (usually issues), a start time for each, the skill each thread runs (usually `/full-stop`), and the models to use. They will be away while it runs, so every decision gets settled before they leave. Each thread runs **unattended**.
 
 ## 1. Settle the queue
 

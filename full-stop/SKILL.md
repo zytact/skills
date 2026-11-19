@@ -1,12 +1,11 @@
 ---
-name: ship
-description: Take a task from implementation to a filed PR, with code review, a verification-skill audit and live verification on the way, then merge it when the merge gate passes.
-disable-model-invocation: true
+name: full-stop
+description: Take a task from implementation to a filed PR, with code review, a verification-skill audit and live verification on the way, then merge it when the merge gate passes. Use when the prompt includes "full stop".
 ---
 
-# Ship
+# Full stop
 
-Take the task passed to `/ship` from code to filed PRs, one or a stack: implement or fix it, review it, prove it live, file, then merge if the gate passes. Each step below ends on its completion criterion. Move to the next step only once it holds.
+Take the task from code to filed PRs, one or a stack: implement or fix it, review it, prove it live, file, then merge if the gate passes. Each step below ends on its completion criterion. Move to the next step only once it holds.
 
 Two steps run in T3 Code `delegate_task` children, a new task for each run. Find the model IDs and options with `orchestrator_capabilities`. Outside T3 Code, or if a model is unavailable, run the step yourself and say so in the report.
 
