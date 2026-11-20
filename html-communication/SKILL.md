@@ -1,6 +1,6 @@
 ---
 name: html-communication
-description: Use when the user tells you to communicate in an HTML document. Also use when the user says "HTML" without more information.
+description: Write a response as one HTML page in the repo's `.htmls/` directory. Use when the prompt includes "html page".
 ---
 
 # HTML Communication
