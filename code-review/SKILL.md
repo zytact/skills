@@ -86,7 +86,7 @@ Use this baseline against the diff:
 Spawn both finders at once as T3 Code `delegate_task` children, a new task for each run. Find the provider instances and options with `orchestrator_capabilities`.
 
 - Claude Opus 5.5 with effort `high`, through the CLIProxyAPI Claude instance, never the plain Claude one. On MSI that instance is "Claude (proxy)". On Fedora the default Claude instance is the proxy.
-- Gemini 4 Neon with `thought_level` `medium`, through the Antigravity provider.
+- Gemini 4 Neon with `thought_level` `high`, through the Antigravity provider.
 
 If a finder's model is unavailable, run with the other and say so in the report. Outside T3 Code, run one finder as your own sub-agent and say so.
 
