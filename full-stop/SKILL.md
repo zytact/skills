@@ -7,10 +7,7 @@ description: Take a task from implementation to a filed PR, with code review, a 
 
 Take the task from code to filed PRs, one or a stack: implement or fix it, review it, prove it live, file, then merge if the gate passes. Each step below ends on its completion criterion. Move to the next step only once it holds.
 
-Two steps run in T3 Code `delegate_task` children, a new task for each run. Find the model IDs and options with `orchestrator_capabilities`. Outside T3 Code, or if a model is unavailable, run the step yourself and say so in the report.
-
-- Step 2 runs the `code-review` skill on Claude Opus 5.5 with effort `high`, through the CLIProxyAPI Claude instance, never the plain Claude one. On MSI that instance is "Claude (proxy)". On Fedora the default Claude instance is the proxy.
-- Step 4 drives on DeepSeek V4.1 Flash Free through the OpenCode provider.
+Step 4 runs in a T3 Code `delegate_task` child on DeepSeek V4.1 Flash Free through the OpenCode provider, a new task for each run. Find the model ID and options with `orchestrator_capabilities`. Outside T3 Code, or if the model is unavailable, run the step yourself and say so in the report.
 
 ## 0. Locate the verification skill
 
@@ -30,7 +27,7 @@ Done when the change does what the task asks and the project's own checks (typec
 
 ## 2. Review
 
-Run the `code-review` skill, on the model named above, with the merge-base against the default branch as the fixed point. In a stack, review each layer on its own, with the layer below it as the fixed point. Fix every confirmed finding, or record why it stays.
+Run the `code-review` skill yourself, which picks its own finder models, with the merge-base against the default branch as the fixed point. In a stack, review each layer on its own, with the layer below it as the fixed point. Fix every confirmed finding, or record why it stays.
 
 The `code-review` skill allows 3 runs per PR, counting runs from before the PR is filed. Once they are spent, later fixes, including those from steps 3, 4 and 6, go in without another review, and the report lists them as unreviewed.
 

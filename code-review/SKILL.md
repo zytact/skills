@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review changes since a fixed point such as a commit, branch, tag, or merge-base along two separate axes. Standards checks whether the code follows the repo's documented coding standards. Spec checks whether the code matches the originating issue or spec. Run one finder sub-agent for both axes, verify every finding with adversarial verifier sub-agents, and report the axes separately. Use when the user wants to review a branch, PR, work-in-progress changes, or asks to "review since X".
+description: Review changes since a fixed point such as a commit, branch, tag, or merge-base along two separate axes. Standards checks whether the code follows the repo's documented coding standards. Spec checks whether the code matches the originating issue or spec. Run two finders on different models for both axes, merge their findings, verify every finding with adversarial verifier sub-agents, and report the axes separately. Use when the user wants to review a branch, PR, work-in-progress changes, or asks to "review since X".
 ---
 
 Review the diff between `HEAD` and a fixed point supplied by the user along two axes:
@@ -8,7 +8,7 @@ Review the diff between `HEAD` and a fixed point supplied by the user along two 
 - **Standards** checks whether the code follows the repo's documented coding standards.
 - **Spec** checks whether the code implements what the originating issue or spec asked for.
 
-One finder sub-agent reviews both axes in separate passes.
+Two finders on different models each review both axes in separate passes. Their findings are merged, then verified.
 
 Review one PR at most 3 times. The limit is per PR, not per task or session, and runs on its branch before the PR was filed count toward it. Every fix-and-review cycle counts as a run. If this would be the fourth run, do not review. Tell the caller the limit is reached, and let it report the fixes made since the last run as unreviewed.
 
@@ -81,9 +81,16 @@ Use this baseline against the diff:
 - **Middle Man.** A class or function mostly forwards calls elsewhere. Consider removing it and calling the real target directly.
 - **Refused Bequest.** A subclass or implementation ignores or replaces most inherited behavior. Consider composition instead of inheritance.
 
-### 4. Spawn the finder sub-agent
+### 4. Spawn the finders
 
-Spawn one finder sub-agent that reviews both axes. Give it:
+Spawn both finders at once as T3 Code `delegate_task` children, a new task for each run. Find the provider instances and options with `orchestrator_capabilities`.
+
+- Claude Opus 5.5 with effort `high`, through the CLIProxyAPI Claude instance, never the plain Claude one. On MSI that instance is "Claude (proxy)". On Fedora the default Claude instance is the proxy.
+- Gemini 4 Neon with `thought_level` `medium`, through the Antigravity provider.
+
+If a finder's model is unavailable, run with the other and say so in the report. Outside T3 Code, run one finder as your own sub-agent and say so.
+
+Give each finder the same brief and inputs:
 
 - The full diff command.
 - The commit list.
@@ -112,8 +119,11 @@ Use this brief:
 >
 > Stay under 400 words per axis.
 
-### 5. Verify every finding
-Do not blindly trust the review. Verify each claim yourself.
+### 5. Merge and verify
+
+Merge the two reports per axis. Two findings that point at the same problem become one. Tag every finding with the finder that raised it: `opus`, `neon` or `both`.
+
+Do not blindly trust the review. Verify each merged claim yourself and mark it `confirmed`, `ungrounded` or `refuted`.
 
 
 ### 6. Aggregate
@@ -130,7 +140,7 @@ Present the reports under these headings:
 ...
 ```
 
-Report `confirmed` findings under their axis, each with its verifier's evidence. Keep the finder's wording verbatim or make only minor cleanup edits.
+Report `confirmed` findings under their axis, each with its finder tag and its verifier's evidence. Keep the finder's wording verbatim or make only minor cleanup edits.
 
 List `ungrounded` findings in their own short subsection per axis, stated as open questions for the human, with what the verifier could not establish.
 
@@ -141,6 +151,7 @@ Do not merge findings from the two axes. Do not rerank them against each other.
 Finish with one line containing:
 
 - The number of confirmed findings on each axis.
+- Per finder, how many of its findings were confirmed and how many refuted, counting `both` for each.
 - The worst confirmed Standards finding, if there is one.
 - The worst confirmed Spec finding, if there is one.
 
