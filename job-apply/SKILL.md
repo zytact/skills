@@ -51,22 +51,22 @@ A new machine lacks the user's private files. Set up whatever is missing, then c
 
 ## Usage gate
 
-A run lasts 30 minutes or more, so a scheduled run first checks the model's 5-hour usage window. A scheduled run is one whose prompt says so, including a continuation. The gate trips when the window is at 70% or more and resets more than 45 minutes from now.
+A run lasts 30 minutes or more and uses a few percent of the weekly limit, so a scheduled run first checks the model's 5-hour and 7-day usage windows. A scheduled run is one whose prompt says so, including a continuation. The gate trips when the 5-hour window is at 70% or more, or the 7-day window at 90% or more, and that window resets more than 45 minutes from now. When both trip, the later reset counts.
 
 Read the window of the account the run's own model bills to:
 
-- **Claude models.** Take `claudeAiOauth.accessToken` from `~/.claude/.credentials.json` and GET `https://api.anthropic.com/api/oauth/usage` with `Authorization: Bearer <token>` and `anthropic-beta: oauth-2025-04-20`. Use `five_hour.utilization` (a percentage) and `five_hour.resets_at`.
-- **GPT models through Codex.** Take `tokens.access_token` and `tokens.account_id` from `~/.codex/auth.json` and GET `https://chatgpt.com/backend-api/wham/usage` with `Authorization: Bearer <token>` and `chatgpt-account-id: <account_id>`. The 5-hour window is whichever of `rate_limit.primary_window` and `rate_limit.secondary_window` has `limit_window_seconds` 18000. Use its `used_percent` and `reset_at` (epoch seconds). If neither has 18000, the plan has no 5-hour limit and the gate passes.
+- **Claude models.** Take `claudeAiOauth.accessToken` from `~/.claude/.credentials.json` and GET `https://api.anthropic.com/api/oauth/usage` with `Authorization: Bearer <token>` and `anthropic-beta: oauth-2025-04-20`. Use `utilization` (a percentage) and `resets_at` from `five_hour` and from `seven_day`.
+- **GPT models through Codex.** Take `tokens.access_token` and `tokens.account_id` from `~/.codex/auth.json` and GET `https://chatgpt.com/backend-api/wham/usage` with `Authorization: Bearer <token>` and `chatgpt-account-id: <account_id>`. Of `rate_limit.primary_window` and `rate_limit.secondary_window`, the one with `limit_window_seconds` 18000 is the 5-hour window and the one with 604800 is the 7-day window. Use each one's `used_percent` and `reset_at` (epoch seconds). A window that is missing has no limit and passes.
 
 If the read fails, the gate passes and the report notes the failure.
 
 When the gate trips:
 
 1. `node $B stop` if the browser is running.
-2. Create one `schedule_task` titled `Job apply continuation`, bound to this thread: `fixed_time` at the reset time plus 5 minutes, with `weekdays` set to that time's local weekday, not today's. Its prompt tells the run to find the task by title with `list_scheduled_tasks` and delete it, then run `/job-apply` (fallback: this skill file's path) as a scheduled, non-trial continuation that applies to at most `<n>` jobs, where `<n>` is what remains of the original run's 5.
+2. Create one `schedule_task` titled `Job apply continuation`, bound to this thread: `fixed_time` at the reset time of the window that tripped plus 5 minutes, with `weekdays` set to that time's local weekday, not today's. Its prompt tells the run to find the task by title with `list_scheduled_tasks` and delete it, then run `/job-apply` (fallback: this skill file's path) as a scheduled, non-trial continuation that applies to at most `<n>` jobs, where `<n>` is what remains of the original run's 5.
 3. End with the report.
 
-A run the user starts by hand, and every trial, does not defer. Over the threshold, it reports the utilization and asks whether to go ahead.
+A run the user starts by hand, and every trial, does not defer. Over either threshold, it reports both windows and asks whether to go ahead.
 
 ## Before anything
 
