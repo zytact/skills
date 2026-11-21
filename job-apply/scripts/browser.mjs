@@ -9,7 +9,7 @@
 //
 //   start                 launch the browser
 //   stop                  quit the browser
-//   cdp                   print the DevTools port, for is-dl --cdp
+//   cdp                   print the DevTools port, for is-dl --cdp; on WSL, a relay to it that lasts until stop
 //   open <url>            open a new tab and make it current
 //   goto <url>            navigate the current tab
 //   tabs                  list open tabs; use <id> makes one current
@@ -45,6 +45,7 @@ const MODE = process.env.JOB_BROWSER_VISIBLE === '1' ? 'visible' : 'hidden';
 const PROFILE = join(WINDOWS ? join(LOCAL_APP_DATA, 'job-apply') : STATE, 'helium-profile');
 const TAB_FILE = join(STATE, 'tab');
 const MODE_FILE = join(STATE, 'mode');
+const RELAY_FILE = join(STATE, 'relay');
 const SHOTS = join(STATE, 'shots');
 mkdirSync(STATE, { recursive: true });
 
@@ -104,14 +105,34 @@ $stream.CopyTo([Console]::OpenStandardOutput())`;
     socket.on('close', () => shell.kill());
     shell.on('exit', () => socket.destroy());
   });
-  server.unref();
-  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
+  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
 
 async function endpoint() {
   const active = activePort();
   if (!active) return null;
-  return `ws://127.0.0.1:${WSL ? await tunnel(active.port) : active.port}${active.path}`;
+  if (!WSL) return `ws://127.0.0.1:${active.port}${active.path}`;
+  const server = await tunnel(active.port);
+  server.unref();
+  return `ws://127.0.0.1:${server.address().port}${active.path}`;
+}
+
+/** The lasting WSL relay to the browser's current DevTools port, if one is alive. */
+function runningRelay() {
+  try {
+    const relay = JSON.parse(readFileSync(RELAY_FILE, 'utf8'));
+    process.kill(relay.pid, 0);
+    return relay.target === activePort()?.port ? relay : null;
+  } catch {
+    return null;
+  }
+}
+
+function stopRelay() {
+  try {
+    process.kill(JSON.parse(readFileSync(RELAY_FILE, 'utf8')).pid);
+  } catch {}
+  rmSync(RELAY_FILE, { force: true });
 }
 
 async function browser() {
@@ -314,15 +335,30 @@ const commands = {
     rmSync(join(PROFILE, 'DevToolsActivePort'), { force: true });
     rmSync(TAB_FILE, { force: true });
     rmSync(MODE_FILE, { force: true });
+    stopRelay();
     out({ ok: true, running: false });
   },
 
   async cdp() {
-    // A tunnel would close when this command exits, so WSL has no port to hand out.
-    if (WSL) fail('WSL cannot reach Windows Helium on a lasting port.');
     const active = activePort();
     if (!active) fail('Browser not running. Run start first.');
-    out({ ok: true, port: active.port });
+    if (!WSL) return out({ ok: true, port: active.port });
+    if (!runningRelay()) {
+      stopRelay();
+      spawn(process.execPath, [fileURLToPath(import.meta.url), 'relay'], { detached: true, stdio: 'ignore' }).unref();
+      for (let i = 0; i < 40 && !runningRelay(); i++) await sleep(250);
+    }
+    const relay = runningRelay();
+    if (!relay) fail('The DevTools relay did not start.');
+    out({ ok: true, port: relay.port });
+  },
+
+  async relay() {
+    const active = activePort();
+    if (!active) fail('Browser not running. Run start first.');
+    const server = await tunnel(active.port);
+    writeFileSync(RELAY_FILE, JSON.stringify({ pid: process.pid, port: server.address().port, target: active.port }));
+    await new Promise(() => {});
   },
 
   async open(url) {

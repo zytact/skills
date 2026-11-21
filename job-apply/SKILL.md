@@ -30,7 +30,7 @@ node $B eval '<js>'           # read what a snapshot misses, such as an iframe's
 node $B shot                  # screenshot path, for showing the user
 node $B close
 node $B stop
-node $B cdp                   # the DevTools port; pass it to is-dl as --cdp <port>
+node $B cdp                   # the DevTools port; pass it to is-dl as --cdp <port>. On WSL it is a relay that lasts until stop
 ```
 
 `JOB_BROWSER_VISIBLE=1 node $B start` opens the same profile in a window on the user's screen, for a captcha handoff or for the user to sign in to a site. Only one of the two runs at a time, so `stop` the hidden one first. When `start` fails because the visible one is open, it is the user's: skip browser work this run and say so.
@@ -75,8 +75,6 @@ A run the user starts by hand, and every trial, does not defer. Over either thre
 3. `is-dl doctor --cdp <port> --json`. Exit 3 means Helium is signed out of LinkedIn. Then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". Then `close`. If either check finds it signed out, stop and tell the user to sign in to LinkedIn in the automation profile, as "First run on a machine" says. Never ask for credentials, and never suggest `is-dl login`.
 4. Read `~/.config/is-dl/answers.md`. It holds every fact you may put in a form. The phone number is in `$APPLICANT_PHONE`. If either is missing, set it up as "First run on a machine" says.
 5. Run the searches in Find, then Browser checks.
-
-Under WSL, `cdp` fails because WSL cannot reach Windows Helium's port. There, leave out `--cdp`, so is-dl uses its own stored session, and on exit 3 tell the user to run `is-dl login` in a terminal.
 
 ## Find
 
