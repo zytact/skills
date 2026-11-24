@@ -2,4 +2,4 @@ interface:
   display_name: "Shop"
   short_description: "Find clothes and shoes that fit your profile"
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

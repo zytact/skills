@@ -28,9 +28,9 @@
 ## Purchases
 ### {Item name} ({site}, {month year})
 - Link: {url}
-- Size bought: {size}, garment {chest/length/shoulder or shoe length}
+- Size bought: {size}, with its size-chart measurements (chest and length for tops, waist and inseam for bottoms, foot length for shoes)
 - Verdict: {how it fit and looked}
-- Adjustments: {rolled sleeves, tailored, insoles, none}
+- Adjustments: {rolled sleeves, hemmed, insoles, half size up, none}
 - Again: {yes / no / in another color}
 ```
 

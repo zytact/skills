@@ -1,6 +1,7 @@
 ---
 name: shop
 description: Find clothes and shoes on Indian shopping sites (Myntra, Meesho, Bewakoof, Cahoot, Flipkart, Amazon, Nykaa Fashion) that fit the user's body, sizes and looks, rate them with two independent model raters, and keep a profile of what has worked. Use when the user wants to find or buy clothes, shoes or accessories, asks what would suit them, or tells you about something they bought and how it fit.
+disable-model-invocation: true
 ---
 
 # Shop
@@ -18,8 +19,12 @@ A request is either a **purchase report** (the user shares something they bought
 
 A purchase that fit, with its garment measurements, is the best sizing data there is. It beats every general rule.
 
-1. Open the link and record the item, brand, the size bought, that size's garment measurements, the fabric and the price. For Myntra, `node scripts/myntra.mjs <id>` returns all of it.
-2. Ask only what the user hasn't said: how the chest, shoulders, length and sleeves fit, how it looks on them, what they changed (rolled sleeves, tailoring, tucked), and whether they would buy it again.
+1. Open the link and record the item, brand, the size bought, that size's measurements from the size chart, the material and the price. For Myntra, `node scripts/myntra.mjs <id>` returns all of it.
+2. Ask only what the user hasn't said: how it fits at the points that matter for that item type, how it looks on them, what they changed, and whether they would buy it again. For example:
+   - Tops and jackets: chest, shoulders, length, sleeves. Changes like rolled sleeves or tailoring.
+   - Bottoms: waist, rise, thigh, inseam, how it breaks at the shoe. Changes like hemming.
+   - Shoes: length, width, toe room, heel height added, comfort after a day. Changes like insoles or a half size up.
+   - Anything else: whatever decides whether it fits, and whatever they changed.
 3. Add it under Purchases in the profile. If it moves a rule, edit the rule too. For example, "S at 40.5 inch chest fit right" sets the chest range in Sizes.
 4. Commit and push the profile.
 
