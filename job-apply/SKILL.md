@@ -12,11 +12,11 @@ This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL
 
 ## The browser
 
-`scripts/browser.mjs` in this skill's folder drives a private Helium in a window the user never sees: on a virtual X display on Linux, on a hidden Windows desktop on Windows and WSL. It is not headless, because captchas reject headless browsers. It runs on its own automation profile, which the user signs in to once and which keeps its sessions between runs. It is never a copy of the user's Helium profile, because LinkedIn logs out a session it sees in two browsers at once. It never touches the browser the user has open, so Helium can stay open during a run. Every command prints one JSON line. The commands here are bash; on Windows, run them in Git Bash.
+`scripts/browser.mjs` in this skill's folder drives a private Helium in a window the user never sees: on a virtual X display on Linux, on a hidden Windows desktop on Windows and WSL. It is not headless, because captchas reject headless browsers. It runs on a copy of the user's main Helium profile, so it is signed in to LinkedIn, Google and the rest. It never touches the browser the user has open. Windows Helium locks its profile while open, so there `start` refreshes the copy only while Helium is closed. Every command prints one JSON line. The commands here are bash; on Windows, run them in Git Bash.
 
 ```bash
 B=<this skill's folder>/scripts/browser.mjs
-node $B start                 # launch on the automation profile
+node $B start                 # refresh the profile copy and launch; synced: false means Helium was open, so the last copy is used
 node $B open <url>            # new tab, becomes current
 node $B snapshot              # page text plus numbered visible elements, shadow DOM included; scoped to an open modal, --all for the whole page
 node $B click <ref>            # prints dialog: true when a modal is open after the click
@@ -30,10 +30,9 @@ node $B eval '<js>'           # read what a snapshot misses, such as an iframe's
 node $B shot                  # screenshot path, for showing the user
 node $B close
 node $B stop
-node $B cdp                   # the DevTools port; pass it to is-dl as --cdp <port>. On WSL it is a relay that lasts until stop
 ```
 
-`JOB_BROWSER_VISIBLE=1 node $B start` opens the same profile in a window on the user's screen, for a captcha handoff or for the user to sign in to a site. Only one of the two runs at a time, so `stop` the hidden one first. When `start` fails because the visible one is open, it is the user's: skip browser work this run and say so.
+`JOB_BROWSER_VISIBLE=1 node $B start` opens the same profile copy in a window on the user's screen, for a captcha handoff. Only one of the two runs at a time, so `stop` the hidden one first. When `start` fails because the visible one is open, it is the user's: skip browser work this run and say so.
 
 Refs come from the latest snapshot. Take a new one after every click that changes the page. A typeahead field, such as a city, wants you to fill it, snapshot, and click a suggestion. When a form sits in an iframe, `eval` its `src` and `goto` it.
 
@@ -46,7 +45,7 @@ A new machine lacks the user's private files. Set up whatever is missing, then c
 - **`~/.config/is-dl/answers.md`.** Copy `references/answers-template.md` from this skill's folder there. Ask the user for every `<placeholder>` in one message, fill in their answers in their words, and leave "Learned answers" empty. Take anything the resume already states, such as degree and graduation, from `resume.yaml` and ask only to confirm it. Never put the file in a git repository; if `~/.config/is-dl` is a dotfiles-managed folder, check that the repo ignores `answers.md`.
 - **`$APPLICANT_PHONE`.** Ask the user for the number with country code. Add `export APPLICANT_PHONE=<number>` to `~/.secrets`, creating it if needed, and make sure every shell loads it: `. "$HOME/.secrets"` in `~/.zshenv`, and on Windows the PowerShell profile too. Never write the number anywhere else.
 - **Xvfb.** On Linux, `start` needs `xvfb-run`. On Fedora it comes with `xorg-x11-server-Xvfb`.
-- **Helium.** `start` needs Helium at `/opt/helium/helium` on Linux or under `%LOCALAPPDATA%\imput\Helium` on Windows and WSL. Set `JOB_BROWSER` when it lives elsewhere. A hidden `start` fails until the automation profile exists: run `JOB_BROWSER_VISIBLE=1 node $B start`, `open https://www.linkedin.com/login`, and ask the user to sign in to LinkedIn, Gmail, Wellfound and workatastartup.com in that window. `stop` it when they say they are done.
+- **Helium.** `start` needs Helium at `/opt/helium/helium` on Linux or under `%LOCALAPPDATA%\imput\Helium` on Windows and WSL. Set `JOB_BROWSER` when it lives elsewhere. The copy comes from Helium's main profile, on Linux in `~/.config/net.imput.helium`; set `JOB_BROWSER_SOURCE` when it lives elsewhere. The user signs in to LinkedIn, Gmail, Wellfound and workatastartup.com in their own Helium. On Windows and WSL the first `start` fails while Helium is open, so ask the user to close it once.
 - **is-dl.** `is-dl doctor` covers it. A missing resume (`~/.config/is-dl/resume/resume.yaml`) is the user's to supply; stop and say so.
 
 ## Usage gate
@@ -71,23 +70,22 @@ A run the user starts by hand, and every trial, does not defer. Over either thre
 ## Before anything
 
 1. On a scheduled run, the usage gate. If it trips, do nothing else.
-2. `node $B start`, then `node $B cdp` for the port. is-dl searches LinkedIn in a tab of this browser, so the two share one session and LinkedIn sees one browser.
-3. `is-dl doctor --cdp <port> --json`. Exit 3 means Helium is signed out of LinkedIn. Then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". Then `close`. If either check finds it signed out, stop and tell the user to sign in to LinkedIn in the automation profile, as "First run on a machine" says. Never ask for credentials, and never suggest `is-dl login`.
-4. Read `~/.config/is-dl/answers.md`. It holds every fact you may put in a form. The phone number is in `$APPLICANT_PHONE`. If either is missing, set it up as "First run on a machine" says.
-5. Run the searches in Find, then Browser checks.
+2. `is-dl doctor --json`. is-dl searches LinkedIn in its own browser with its own stored session, separate from Helium. Exit 3 means that session expired: run no LinkedIn searches this run, and tell the user to run `is-dl login` in a terminal. Never ask for credentials.
+3. Read `~/.config/is-dl/answers.md`. It holds every fact you may put in a form. The phone number is in `$APPLICANT_PHONE`. If either is missing, set it up as "First run on a machine" says.
+4. Run the searches in Find. Start the browser only after the last LinkedIn search finishes; see Browser checks.
 
 ## Find
 
 ```bash
-is-dl search -k "<role>" --source linkedin -l "<location>" --remote-only --cdp <port> \
+is-dl search -k "<role>" --source linkedin -l "<location>" --remote-only \
   --experience-level "Internship,Entry level" --posted-within "Past week" --exclude-unpaid --exclude-applied --exclude-seen --json
 ```
 
 A search takes 2 to 5 minutes, sometimes more, and a full 50-listing run can take 50. Run each search as its own background job with a 2-hour timeout, and read its output file when the job finishes. A foreground or default-timeout job gets killed at 30 minutes and loses the listings it had collected.
 
-LinkedIn searches one place at a time. It has no worldwide option, and `-l Worldwide` falls back to the account's country. Use these locations, one search each: `India`, `United States`, `Europe`. Run LinkedIn searches one at a time, extra roles included: start the next only after the previous one finishes. Concurrent ones fail with job-list and `page.goto` timeouts, and look like a bot to LinkedIn. Open no LinkedIn page yourself while a LinkedIn search runs.
+LinkedIn searches one place at a time. It has no worldwide option, and `-l Worldwide` falls back to the account's country. Use these locations, one search each: `India`, `United States`, `Europe`. Run LinkedIn searches one at a time, extra roles included: start the next only after the previous one finishes. Each opens its own logged-in browser on the same LinkedIn account, and concurrent ones fail with job-list and `page.goto` timeouts. Helium is signed in to that account too, so it opens no LinkedIn page while a LinkedIn search runs.
 
-When a search fails with a navigation or job-list timeout, run it once more with `--timeout 60000`. If the retry fails too, skip that location for this run and say so in the report. Never retry a third time, and never retry exit 3 or 4. Exit 3 means LinkedIn signed Helium out: run no more LinkedIn searches or LinkedIn applications this run, and tell the user to sign in to LinkedIn in the automation profile.
+When a search fails with a navigation or job-list timeout, run it once more with `--timeout 60000`. If the retry fails too, skip that location for this run and say so in the report. Never retry a third time, and never retry exit 3 or 4. Exit 3 means is-dl's LinkedIn session expired: run no more LinkedIn searches this run, and tell the user to run `is-dl login`.
 
 Search software engineer in all three locations first. LinkedIn's search matches meaning, so a second role in the same location mostly repeats the first search's listings and then returns on-site ones. Only if you are still short of candidates, search one more role across the three locations, in this order: full stack developer, AI engineer, forward deployed engineer. Skip Unstop. A search can return the same `jobId` twice; keep one.
 
@@ -129,8 +127,9 @@ Fewer good listings than the limit is fine. Never pad.
 
 Once every LinkedIn search has finished, extra roles included:
 
-1. Read `~/.local/state/job-apply/pending.json` if it exists, and check every entry, whatever its status, for a closed listing: the listing or its apply page says it is closed or no longer accepting applications, or is gone. A Y Combinator job has closed when its `id` is missing from the company's `jobPostings` (see Apply step 2). When LinkedIn has a repost by the same company with the same role, put the repost's `jobId` and `url` in the entry and keep it. Otherwise remove the entry as Log describes for a rejected job, without asking the user.
-2. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
+1. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". Then `close`. If it is signed out, do no LinkedIn work this run and tell the user to sign in to LinkedIn in Helium. Never ask for credentials. When `start` printed `synced: false`, a sign-in the user made since the last copy is missing too; say so, and that closing Helium before the next run picks it up.
+2. Read `~/.local/state/job-apply/pending.json` if it exists, and check every entry, whatever its status, for a closed listing: the listing or its apply page says it is closed or no longer accepting applications, or is gone. A Y Combinator job has closed when its `id` is missing from the company's `jobPostings` (see Apply step 2). When LinkedIn has a repost by the same company with the same role, put the repost's `jobId` and `url` in the entry and keep it. Otherwise remove the entry as Log describes for a rejected job, without asking the user.
+3. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
 
 ## Apply
 
@@ -138,7 +137,7 @@ For each kept listing, one at a time:
 
 1. Add a variant to `variants.yaml` named `<company>-<role>`, by copying an existing block and changing only `headline`, `lead` and `drop`. Build it with `is-dl resume build --variant <name> --json` and take the PDF path from its output. Fix overflow by dropping bullets, as the is-dl skill says.
 2. `open` the listing and `snapshot`. For a Y Combinator job, `open` `https://www.workatastartup.com/jobs/<jobId>` instead. Its `applyUrl` only leads to the profile wizard. A LinkedIn listing whose Apply goes to `ycombinator.com` or `workatastartup.com` is a Y Combinator job too: find the role on the company's page (`https://www.ycombinator.com/companies/<slug>`, its `jobPostings` in the `data-page` JSON) and continue with its `id` as the `jobId` and `source` set to `ycombinator`. If the role is not there, it has closed; reject it.
-3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. When the employer's site describes the role, read that description before the form. Where it differs from the board listing on location, pay or hours, the employer's site wins: judge the job again by the keep rules and reject it if it fails. If the listing only gives an email address, write a Gmail draft; see Email drafts. On a Y Combinator job page, a signed-in user's name shows next to "My profile". If the page shows "Sign in" there instead, stop on every Y Combinator job this run and tell the user to sign in to workatastartup.com in the automation profile. Snapshots miss its Apply link, so click it with `eval`: the `a` element whose text is exactly `Apply`. It opens a dialog with one message to the founder, at least 50 characters, and a Send button. Write the message as Drafts describes. When the dialog says the qualifications might not match, re-check the listing against the keep rules and go ahead if it still passes. Never click Send on a run; see Drafts. A Wellfound job page that shows `Log In` and `Sign Up` is signed out: stop on every Wellfound job this run and tell the user to sign in to wellfound.com in the automation profile. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
+3. Click Easy Apply, or Apply when it leads to the employer's site. External sites are fine, but only those that need no new account. A site you are already signed in to, such as Google Forms, is fine. When the employer's site describes the role, read that description before the form. Where it differs from the board listing on location, pay or hours, the employer's site wins: judge the job again by the keep rules and reject it if it fails. If the listing only gives an email address, write a Gmail draft; see Email drafts. On a Y Combinator job page, a signed-in user's name shows next to "My profile". If the page shows "Sign in" there instead, stop on every Y Combinator job this run and tell the user to sign in to workatastartup.com in Helium. Snapshots miss its Apply link, so click it with `eval`: the `a` element whose text is exactly `Apply`. It opens a dialog with one message to the founder, at least 50 characters, and a Send button. Write the message as Drafts describes. When the dialog says the qualifications might not match, re-check the listing against the keep rules and go ahead if it still passes. Never click Send on a run; see Drafts. A Wellfound job page that shows `Log In` and `Sign Up` is signed out: stop on every Wellfound job this run and tell the user to sign in to wellfound.com in Helium. When `click` on Easy Apply prints `dialog: false`, wait 3 seconds and snapshot before clicking again. A second click on an open form closes it and asks "Save this application?"; answer Discard and start over.
 4. Fill the form:
    - Contact fields and screening questions come from `answers.md`. Copy the facts. Do not round, stretch or guess. Where `answers.md` and `resume.yaml` disagree, `answers.md` wins in forms. Never edit `resume.yaml` to match.
    - `$APPLICANT_PHONE` already starts with `+91`. When the form has its own country code field, pick India there and enter the number without `+91`.
@@ -200,7 +199,7 @@ Claim only what `resume.yaml` and `answers.md` show. For a form answer, answer t
 
 #### Email drafts
 
-Draft from the account whose address is the contact email in `resume.yaml`. `open https://mail.google.com/mail/?authuser=<address>`; the tab title must end with `<address> - Gmail`. If it does not, that account is not signed in: stop on every email job this run and tell the user to sign in to it in the automation profile.
+Draft from the account whose address is the contact email in `resume.yaml`. `open https://mail.google.com/mail/?authuser=<address>`; the tab title must end with `<address> - Gmail`. If it does not, that account is not signed in: stop on every email job this run and tell the user to sign in to it in Helium.
 
 1. `goto https://mail.google.com/mail/?authuser=<address>&view=cm&fs=1&to=<to>&su=<subject>&body=<body>`, each value URL-encoded, newlines as `%0A`. The subject follows the listing's instructions; without any, use `<role> application - <name>`.
 2. `snapshot` once the page settles, and `upload` the built PDF to the `Filedata` file input.

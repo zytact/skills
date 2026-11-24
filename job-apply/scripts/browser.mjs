@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 // Drives a private Helium for job applications over the DevTools protocol.
-// The browser runs on its own persistent profile, never a copy of the user's, so no session cookie
-// is ever live in two browsers at once. It runs in a real window the user never sees,
+// The browser runs on a copy of the user's main Helium profile, so it carries their logins without
+// touching the running browser. It runs in a real window the user never sees,
 // since sites' captchas reject headless browsers: on a virtual X display on Linux, and on Windows
 // and WSL on a hidden Windows desktop (hidden-desktop.ps1). Every command prints one JSON line.
-// With JOB_BROWSER_VISIBLE=1, start opens the same profile in a window on the user's screen, so the
-// user can sign in or finish a form by hand. Only one of the two runs at a time.
+// With JOB_BROWSER_VISIBLE=1, start opens the same copy in a window on the user's screen, so the
+// user can finish a form by hand. Only one of the two runs at a time.
 //
-//   start                 launch the browser
+//   start                 refresh the profile copy while Helium is closed, then launch the browser
 //   stop                  quit the browser
-//   cdp                   print the DevTools port, for is-dl --cdp; on WSL, a relay to it that lasts until stop
 //   open <url>            open a new tab and make it current
 //   goto <url>            navigate the current tab
 //   tabs                  list open tabs; use <id> makes one current
@@ -23,7 +22,7 @@
 //   shot                  save a screenshot, print its path
 //   close                 close the current tab
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -39,13 +38,13 @@ const browserPath = (path) => (WSL ? run('wslpath', '-w', path) : path);
 const LOCAL_APP_DATA = WSL ? run('wslpath', run('cmd.exe', '/d', '/c', 'echo %LOCALAPPDATA%')) : process.env.LOCALAPPDATA;
 
 const BROWSER = process.env.JOB_BROWSER ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/Application/chrome.exe') : '/opt/helium/helium');
+const SOURCE = process.env.JOB_BROWSER_SOURCE ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/User Data') : join(homedir(), '.config/net.imput.helium'));
 const STATE = join(homedir(), '.local/state/job-apply');
 const MODE = process.env.JOB_BROWSER_VISIBLE === '1' ? 'visible' : 'hidden';
 // Windows Helium cannot run a profile from the WSL filesystem, so on Windows and WSL the profile lives in %LOCALAPPDATA%.
 const PROFILE = join(WINDOWS ? join(LOCAL_APP_DATA, 'job-apply') : STATE, 'helium-profile');
 const TAB_FILE = join(STATE, 'tab');
 const MODE_FILE = join(STATE, 'mode');
-const RELAY_FILE = join(STATE, 'relay');
 const SHOTS = join(STATE, 'shots');
 mkdirSync(STATE, { recursive: true });
 
@@ -117,24 +116,6 @@ async function endpoint() {
   return `ws://127.0.0.1:${server.address().port}${active.path}`;
 }
 
-/** The lasting WSL relay to the browser's current DevTools port, if one is alive. */
-function runningRelay() {
-  try {
-    const relay = JSON.parse(readFileSync(RELAY_FILE, 'utf8'));
-    process.kill(relay.pid, 0);
-    return relay.target === activePort()?.port ? relay : null;
-  } catch {
-    return null;
-  }
-}
-
-function stopRelay() {
-  try {
-    process.kill(JSON.parse(readFileSync(RELAY_FILE, 'utf8')).pid);
-  } catch {}
-  rmSync(RELAY_FILE, { force: true });
-}
-
 async function browser() {
   const url = await endpoint();
   if (!url) fail('Browser not running. Run start first.');
@@ -188,10 +169,33 @@ async function where(evaluate) {
   return evaluate(`({ url: location.href, title: document.title, dialog: ${DIALOGS}.length > 0 })`);
 }
 
-function clearStaleState() {
+function locked(profile) {
+  try {
+    closeSync(openSync(join(profile, 'Default/Network/Cookies'), 'r'));
+    return false;
+  } catch (error) {
+    return ['EACCES', 'EBUSY', 'EPERM'].includes(error.code);
+  }
+}
+
+function syncProfile() {
   for (const name of ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'lockfile', 'DevToolsActivePort', 'Default/Sessions', 'Default/Sessions_Encrypted']) {
     rmSync(join(PROFILE, name), { recursive: true, force: true });
   }
+  if (locked(SOURCE)) {
+    if (existsSync(join(PROFILE, 'Local State'))) return false;
+    fail('Helium is open, so its profile cannot be copied yet. Ask the user to close Helium, then run start again.');
+  }
+  mkdirSync(join(PROFILE, 'Default'), { recursive: true });
+  writeFileSync(join(PROFILE, 'Local State'), readFileSync(join(SOURCE, 'Local State')));
+  const exclude = ['IndexedDB', 'Service Worker', '*Cache*', 'blob_storage', 'File System', 'Extensions', 'History*', 'Favicons*', 'LOCK', 'Sessions'];
+  const copy =
+    process.platform === 'win32'
+      ? spawnSync('robocopy', [join(SOURCE, 'Default'), join(PROFILE, 'Default'), '/MIR', '/NJH', '/NJS', '/NFL', '/NDL', '/NP', '/XD', ...exclude, '/XF', ...exclude], { encoding: 'utf8' })
+      : spawnSync('rsync', ['-a', '--delete', ...exclude.flatMap((e) => ['--exclude', e]), `${SOURCE}/Default/`, `${PROFILE}/Default/`], { encoding: 'utf8' });
+  const robocopyOk = process.platform === 'win32' && copy.status < 8;
+  if (copy.status !== 0 && !robocopyOk) fail(`Profile sync failed: ${copy.stderr || copy.stdout}`);
+  return true;
 }
 
 /** The user's Wayland socket. Agent shells often lack WAYLAND_DISPLAY, so fall back to the runtime dir. */
@@ -292,10 +296,7 @@ const commands = {
     }
     if (!existsSync(BROWSER)) fail(`No browser at ${BROWSER}. Set JOB_BROWSER.`);
     if (!WINDOWS && MODE === 'hidden' && spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
-    if (MODE === 'hidden' && !existsSync(join(PROFILE, 'Local State'))) {
-      fail('The automation profile does not exist yet. Ask the user to sign in to it: JOB_BROWSER_VISIBLE=1 node browser.mjs start.');
-    }
-    clearStaleState();
+    const synced = syncProfile();
     writeFileSync(MODE_FILE, MODE);
     const flags = [`--user-data-dir=${browserPath(PROFILE)}`, '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'];
     const launch = () => {
@@ -323,7 +324,7 @@ const commands = {
       for (let i = 0; i < 120 && !activePort(); i++) await sleep(250);
     }
     if (!activePort()) fail('Browser did not start.');
-    out({ ok: true, running: true, mode: MODE });
+    out({ ok: true, running: true, mode: MODE, synced, ...(!synced && { note: 'Helium is open, so this run uses the profile copy from its last start.' }) });
   },
 
   async stop() {
@@ -335,30 +336,7 @@ const commands = {
     rmSync(join(PROFILE, 'DevToolsActivePort'), { force: true });
     rmSync(TAB_FILE, { force: true });
     rmSync(MODE_FILE, { force: true });
-    stopRelay();
     out({ ok: true, running: false });
-  },
-
-  async cdp() {
-    const active = activePort();
-    if (!active) fail('Browser not running. Run start first.');
-    if (!WSL) return out({ ok: true, port: active.port });
-    if (!runningRelay()) {
-      stopRelay();
-      spawn(process.execPath, [fileURLToPath(import.meta.url), 'relay'], { detached: true, stdio: 'ignore' }).unref();
-      for (let i = 0; i < 40 && !runningRelay(); i++) await sleep(250);
-    }
-    const relay = runningRelay();
-    if (!relay) fail('The DevTools relay did not start.');
-    out({ ok: true, port: relay.port });
-  },
-
-  async relay() {
-    const active = activePort();
-    if (!active) fail('Browser not running. Run start first.');
-    const server = await tunnel(active.port);
-    writeFileSync(RELAY_FILE, JSON.stringify({ pid: process.pid, port: server.address().port, target: active.port }));
-    await new Promise(() => {});
   },
 
   async open(url) {
