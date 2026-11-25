@@ -27,6 +27,7 @@ node $B press Enter           # also Tab, Escape, ArrowDown, ArrowUp, Backspace
 node $B tabs                  # an external Apply often opens a new tab; switch with: node $B use <id>
 node $B goto <url>
 node $B eval '<js>'           # read what a snapshot misses, such as an iframe's src
+node $B dialog accept         # or dismiss; answers a page's alert, confirm or prompt, which fails every other command with its text until answered
 node $B shot                  # screenshot path, for showing the user
 node $B show                  # bring the current tab's window up for the user; hide minimizes it again
 node $B close
@@ -35,7 +36,7 @@ node $B stop                  # close every tab this run opened and detach; Heli
 
 When `start` fails, do no browser work this run and report its error, such as an unapproved connection or remote debugging turned off.
 
-Refs come from the latest snapshot. Take a new one after every click that changes the page. A typeahead field, such as a city, wants you to fill it, snapshot, and click a suggestion. When a form sits in an iframe, `eval` its `src` and `goto` it.
+Refs come from the latest snapshot. Take a new one after every click that changes the page. A typeahead field, such as a city, wants you to fill it, snapshot, and click a suggestion. Snapshots reach into same-origin iframes. When a form sits in a cross-origin iframe, `eval` its `src` and `goto` it.
 
 A LinkedIn listing loads its description late. Wait about 6 seconds after `open`, click "… more" if the description shows one, then snapshot with `--all`.
 

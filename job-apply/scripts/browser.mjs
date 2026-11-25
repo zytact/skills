@@ -20,6 +20,7 @@ const DAEMON_FILE = join(STATE, 'browser.json');
 const DAEMON_LOG = join(STATE, 'browser.log');
 const SHOTS = join(STATE, 'shots');
 const ATTACH_TIMEOUT_MS = 120000;
+const REQUEST_TIMEOUT_MS = 60000;
 mkdirSync(STATE, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -145,14 +146,29 @@ async function connect(url, onEvent, onClose) {
     const entry = pending.get(message.id);
     if (!entry) return;
     pending.delete(message.id);
+    clearTimeout(entry.timer);
     message.error ? entry.reject(new Error(message.error.message)) : entry.resolve(message.result);
   };
   ws.onclose = onClose;
-  return (method, params = {}, sessionId) =>
+  const send = (method, params = {}, sessionId) =>
     new Promise((resolve, reject) => {
-      pending.set(++id, { resolve, reject });
-      ws.send(JSON.stringify({ id, method, params, sessionId }));
+      const requestId = ++id;
+      const timer = setTimeout(() => {
+        pending.delete(requestId);
+        reject(new Error(`${method} got no answer within ${REQUEST_TIMEOUT_MS / 1000} seconds.`));
+      }, REQUEST_TIMEOUT_MS);
+      pending.set(requestId, { resolve, reject, timer, sessionId });
+      ws.send(JSON.stringify({ id: requestId, method, params, sessionId }));
     });
+  send.failSession = (sessionId, error) => {
+    for (const [requestId, entry] of pending) {
+      if (entry.sessionId !== sessionId) continue;
+      pending.delete(requestId);
+      clearTimeout(entry.timer);
+      entry.reject(error);
+    }
+  };
+  return send;
 }
 
 async function attach(onEvent, onClose) {
@@ -182,8 +198,26 @@ const DIALOGS = `(() => {
 
 const DEEP = `const deepAll = (root, selector) => {
   const found = [...root.querySelectorAll(selector)];
-  for (const el of root.querySelectorAll('*')) if (el.shadowRoot) found.push(...deepAll(el.shadowRoot, selector));
+  for (const el of root.querySelectorAll('*')) {
+    if (el.shadowRoot) found.push(...deepAll(el.shadowRoot, selector));
+    if (el.tagName === 'IFRAME') {
+      let inner = null;
+      try { inner = el.contentDocument; } catch {}
+      if (inner?.body) found.push(...deepAll(inner, selector));
+    }
+  }
   return found;
+};
+const pageBox = (el) => {
+  const r = el.getBoundingClientRect();
+  let x = r.left + r.width / 2;
+  let y = r.top + r.height / 2;
+  for (let frame = el.ownerDocument.defaultView.frameElement; frame; frame = frame.ownerDocument.defaultView.frameElement) {
+    const f = frame.getBoundingClientRect();
+    x += f.left + frame.clientLeft;
+    y += f.top + frame.clientTop;
+  }
+  return { x, y };
 };`;
 
 const element = (ref) => `(() => { ${DEEP} return deepAll(document, '[data-ja-ref="${Number(ref)}"]')[0] ?? null; })()`;
@@ -258,14 +292,22 @@ const KEYS = {
 async function serve() {
   const tabs = new Set();
   const sessions = new Map();
+  const dialogs = new Map();
   let current = null;
+  let send;
+  const dialogError = ({ type, message }) => new Error(`The page opened a ${type} dialog: "${message}". Run dialog accept or dialog dismiss.`);
   let shuttingDown = false;
   const exit = (reason) => {
     console.error(`${new Date().toISOString()} exit: ${reason}`);
     if (readJson(DAEMON_FILE)?.pid === process.pid) rmSync(DAEMON_FILE, { force: true });
     process.exit(0);
   };
-  const onEvent = ({ method, params }) => {
+  const onEvent = ({ method, params, sessionId }) => {
+    if (method === 'Page.javascriptDialogOpening') {
+      dialogs.set(sessionId, params);
+      send.failSession(sessionId, dialogError(params));
+    }
+    if (method === 'Page.javascriptDialogClosed') dialogs.delete(sessionId);
     if (method === 'Target.targetCreated' && params.targetInfo.type === 'page' && tabs.has(params.targetInfo.openerId)) tabs.add(params.targetInfo.targetId);
     if (method === 'Target.targetDestroyed') {
       tabs.delete(params.targetId);
@@ -274,7 +316,6 @@ async function serve() {
     }
   };
 
-  let send;
   try {
     send = await attach(onEvent, (event) => shuttingDown || exit(`Helium closed the DevTools connection (code ${event?.code})`));
   } catch (error) {
@@ -291,8 +332,10 @@ async function serve() {
     if (!sessionId) {
       ({ sessionId } = await send('Target.attachToTarget', { targetId: current, flatten: true }));
       sessions.set(current, sessionId);
+      await send('Page.enable', {}, sessionId);
       await send('Emulation.setFocusEmulationEnabled', { enabled: true }, sessionId).catch(() => {});
     }
+    if (dialogs.has(sessionId)) throw dialogError(dialogs.get(sessionId));
     const pageSend = (method, params) => send(method, params, sessionId);
     const evaluate = async (expression) => {
       const { result, exceptionDetails } = await pageSend('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
@@ -357,11 +400,11 @@ async function serve() {
     async click(ref) {
       const { send: pageSend, evaluate } = await page();
       const box = await evaluate(`(() => {
-        const el = ${element(ref)};
+        ${DEEP}
+        const el = deepAll(document, '[data-ja-ref="${Number(ref)}"]')[0];
         if (!el) return null;
         el.scrollIntoView({ block: 'center', inline: 'center' });
-        const r = el.getBoundingClientRect();
-        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        return pageBox(el);
       })()`);
       if (!box) throw new Error(`No element ${ref}. Take a new snapshot.`);
       for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
@@ -448,6 +491,16 @@ async function serve() {
       const path = join(SHOTS, `${new Date().toISOString().replace(/[:.]/g, '-')}.png`);
       writeFileSync(path, Buffer.from(data, 'base64'));
       return { path };
+    },
+
+    async dialog(action, ...words) {
+      if (!['accept', 'dismiss'].includes(action)) throw new Error('Usage: dialog accept|dismiss [prompt text]');
+      const sessionId = sessions.get(current);
+      const open = dialogs.get(sessionId);
+      if (!open) throw new Error('No dialog is open on the current tab.');
+      await send('Page.handleJavaScriptDialog', { accept: action === 'accept', ...(words.length && { promptText: words.join(' ') }) }, sessionId);
+      dialogs.delete(sessionId);
+      return { dialog: open.type, message: open.message, action };
     },
 
     async show() {
