@@ -1,35 +1,11 @@
 #!/usr/bin/env node
-// Drives a private Helium for job applications over the DevTools protocol.
-// The browser runs on a copy of the user's main Helium profile, so it carries their logins without
-// touching the running browser. It runs in a real window the user never sees,
-// since sites' captchas reject headless browsers: on a virtual X display on Linux, and on Windows
-// and WSL on a hidden Windows desktop (hidden-desktop.ps1). Every command prints one JSON line.
-// With JOB_BROWSER_VISIBLE=1, start opens the same copy in a window on the user's screen, so the
-// user can finish a form by hand. Only one of the two runs at a time.
-//
-//   start                 refresh the profile copy while Helium is closed, then launch the browser
-//   stop                  quit the browser
-//   open <url>            open a new tab and make it current
-//   goto <url>            navigate the current tab
-//   tabs                  list open tabs; use <id> makes one current
-//   snapshot [--all]      text plus numbered visible form elements, scoped to an open dialog unless --all
-//   click <ref>           real mouse click on an element from the last snapshot; reports whether a dialog is open
-//   fill <ref> <text>     replace an input or textarea's text, or set a date-like input's value
-//   select <ref> <label>  choose a native <select> option by its visible label
-//   upload <ref> <file>   set a file input's file
-//   press <key>           Enter, Tab, Escape, ArrowDown, ArrowUp or Backspace
-//   eval <js>             evaluate an expression in the page, return its value
-//   shot                  save a screenshot, print its path
-//   close                 close the current tab
 import { spawn, spawnSync } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { createServer } from 'node:net';
+import { existsSync, mkdirSync, openSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createConnection, createServer } from 'node:net';
 import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Windows and WSL both run Windows Helium. WSL also converts paths, relays the DevTools port,
-// and starts Windows tools from /mnt/c, since they warn or fail in a WSL directory.
 const WSL = Boolean(process.env.WSL_DISTRO_NAME);
 const WINDOWS = WSL || process.platform === 'win32';
 const CWD = WSL ? '/mnt/c' : undefined;
@@ -38,58 +14,99 @@ const browserPath = (path) => (WSL ? run('wslpath', '-w', path) : path);
 const LOCAL_APP_DATA = WSL ? run('wslpath', run('cmd.exe', '/d', '/c', 'echo %LOCALAPPDATA%')) : process.env.LOCALAPPDATA;
 
 const BROWSER = process.env.JOB_BROWSER ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/Application/chrome.exe') : '/opt/helium/helium');
-const SOURCE = process.env.JOB_BROWSER_SOURCE ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/User Data') : join(homedir(), '.config/net.imput.helium'));
+const USER_DATA = process.env.JOB_BROWSER_DATA ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/User Data') : join(homedir(), '.config/net.imput.helium'));
 const STATE = join(homedir(), '.local/state/job-apply');
-const MODE = process.env.JOB_BROWSER_VISIBLE === '1' ? 'visible' : 'hidden';
-// Windows Helium cannot run a profile from the WSL filesystem, so on Windows and WSL the profile lives in %LOCALAPPDATA%.
-const PROFILE = join(WINDOWS ? join(LOCAL_APP_DATA, 'job-apply') : STATE, 'helium-profile');
-const TAB_FILE = join(STATE, 'tab');
-const MODE_FILE = join(STATE, 'mode');
+const DAEMON_FILE = join(STATE, 'browser.json');
+const DAEMON_LOG = join(STATE, 'browser.log');
 const SHOTS = join(STATE, 'shots');
+const ATTACH_TIMEOUT_MS = 120000;
 mkdirSync(STATE, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const out = (value) => console.log(JSON.stringify(value));
+const print = (value) => console.log(JSON.stringify(value));
 const fail = (message) => {
-  out({ ok: false, error: message });
+  print({ ok: false, error: message });
   process.exit(1);
 };
 
-/** One DevTools WebSocket connection with request/response matching. */
-async function connect(url) {
-  const ws = new WebSocket(url);
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('connect timeout')), 10000);
-    ws.onopen = () => (clearTimeout(timer), resolve());
-    ws.onerror = () => (clearTimeout(timer), reject(new Error('connect failed')));
+const readJson = (path) => {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return null;
+  }
+};
+
+const alive = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+function request(port, message) {
+  return new Promise((resolve, reject) => {
+    const socket = createConnection({ port, host: '127.0.0.1' });
+    let data = '';
+    socket.on('connect', () => socket.write(JSON.stringify(message) + '\n'));
+    socket.on('data', (chunk) => (data += chunk));
+    socket.on('end', () => {
+      try {
+        resolve(JSON.parse(data));
+      } catch {
+        reject(new Error('The browser daemon sent no reply.'));
+      }
+    });
+    socket.on('error', reject);
   });
-  let id = 0;
-  const pending = new Map();
-  ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    const entry = pending.get(message.id);
-    if (!entry) return;
-    pending.delete(message.id);
-    message.error ? entry.reject(new Error(message.error.message)) : entry.resolve(message.result);
-  };
-  return {
-    send: (method, params = {}, sessionId) =>
-      new Promise((resolve, reject) => {
-        pending.set(++id, { resolve, reject });
-        ws.send(JSON.stringify({ id, method, params, sessionId }));
-      }),
-    close: () => ws.close(),
-  };
+}
+
+async function runningDaemon() {
+  const info = readJson(DAEMON_FILE);
+  if (!info?.port || !alive(info.pid)) return null;
+  const reply = await request(info.port, { name: 'ping', args: [] }).catch(() => null);
+  return reply?.ok ? info : null;
+}
+
+async function startCommand() {
+  const running = await runningDaemon();
+  if (running) return print({ ok: true, attached: true });
+  rmSync(DAEMON_FILE, { force: true });
+  const log = openSync(DAEMON_LOG, 'w');
+  spawn(process.execPath, [fileURLToPath(import.meta.url), 'serve'], { detached: true, stdio: ['ignore', log, log] }).unref();
+  const deadline = Date.now() + ATTACH_TIMEOUT_MS + 45000;
+  while (Date.now() < deadline) {
+    const info = readJson(DAEMON_FILE);
+    if (info?.error) {
+      rmSync(DAEMON_FILE, { force: true });
+      fail(info.error);
+    }
+    if (info?.port) return print({ ok: true, attached: true });
+    await sleep(250);
+  }
+  fail(`The browser daemon did not start. See ${DAEMON_LOG}.`);
+}
+
+async function clientCommand(name, args) {
+  const info = await runningDaemon();
+  if (!info) {
+    if (name === 'stop') return print({ ok: true, attached: false });
+    fail('Not attached to Helium. Run start first.');
+  }
+  const reply = await request(info.port, { name, args }).catch((error) => ({ ok: false, error: error.message }));
+  print(reply);
+  if (!reply.ok) process.exit(1);
 }
 
 function activePort() {
-  const file = join(PROFILE, 'DevToolsActivePort');
+  const file = join(USER_DATA, 'DevToolsActivePort');
   if (!existsSync(file)) return null;
   const [port, path] = readFileSync(file, 'utf8').split('\n');
-  return { port: port.trim(), path: path.trim() };
+  return { port: port.trim(), path: path.trim(), written: statSync(file).mtimeMs };
 }
 
-/** WSL cannot reach Windows 127.0.0.1, so a local port relays each connection through one powershell.exe. */
 function tunnel(port) {
   const relay = `$client = [Net.Sockets.TcpClient]::new('127.0.0.1', ${Number(port)})
 $stream = $client.GetStream()
@@ -107,107 +124,62 @@ $stream.CopyTo([Console]::OpenStandardOutput())`;
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
 
-async function endpoint() {
-  const active = activePort();
-  if (!active) return null;
+async function endpoint(active) {
   if (!WSL) return `ws://127.0.0.1:${active.port}${active.path}`;
   const server = await tunnel(active.port);
-  server.unref();
   return `ws://127.0.0.1:${server.address().port}${active.path}`;
 }
 
-async function browser() {
-  const url = await endpoint();
-  if (!url) fail('Browser not running. Run start first.');
-  try {
-    return await connect(url);
-  } catch {
-    fail('Browser not running. Run start first.');
-  }
-}
-
-/** Attaches to the current tab and returns a page-scoped send. */
-async function page() {
-  const cdp = await browser();
-  if (!existsSync(TAB_FILE)) fail('No current tab. Run open <url> first.');
-  const targetId = readFileSync(TAB_FILE, 'utf8').trim();
-  let sessionId;
-  try {
-    ({ sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true }));
-  } catch {
-    fail('Current tab is gone. Run tabs, then use <id> or open <url>.');
-  }
-  const send = (method, params) => cdp.send(method, params, sessionId);
-  const evaluate = async (expression) => {
-    const { result, exceptionDetails } = await send('Runtime.evaluate', {
-      expression,
-      returnByValue: true,
-      awaitPromise: true,
-    });
-    if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
-    return result.value;
+async function connect(url, onEvent, onClose) {
+  const ws = new WebSocket(url);
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ATTACH_TIMEOUT_MS);
+    ws.onopen = () => (clearTimeout(timer), resolve());
+    ws.onerror = () => (clearTimeout(timer), reject(new Error('refused')));
+  });
+  let id = 0;
+  const pending = new Map();
+  ws.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    if (message.id === undefined) return onEvent(message);
+    const entry = pending.get(message.id);
+    if (!entry) return;
+    pending.delete(message.id);
+    message.error ? entry.reject(new Error(message.error.message)) : entry.resolve(message.result);
   };
-  return { cdp, send, evaluate };
+  ws.onclose = onClose;
+  return (method, params = {}, sessionId) =>
+    new Promise((resolve, reject) => {
+      pending.set(++id, { resolve, reject });
+      ws.send(JSON.stringify({ id, method, params, sessionId }));
+    });
 }
 
-async function settle(evaluate) {
-  for (let i = 0; i < 30; i++) {
-    if ((await evaluate('document.readyState').catch(() => null)) === 'complete') break;
-    await sleep(500);
+async function attach(onEvent, onClose) {
+  const existing = activePort();
+  if (existing) {
+    const url = await endpoint(existing);
+    const send = await connect(url, onEvent, onClose).catch((error) => error);
+    if (!(send instanceof Error)) return send;
+    if (send.message === 'timeout') throw new Error('Helium did not accept the DevTools connection. Approve the remote debugging prompt in Helium, then run start again.');
   }
-  await sleep(800);
+  if (!existsSync(BROWSER)) throw new Error(`Helium is not running and there is no browser at ${BROWSER}. Set JOB_BROWSER.`);
+  spawn(BROWSER, [], { cwd: CWD, detached: true, stdio: 'ignore' }).unref();
+  const launched = Date.now();
+  for (let i = 0; i < 120; i++) {
+    await sleep(250);
+    const active = activePort();
+    if (active && active.written >= launched - 1000) return connect(await endpoint(active), onEvent, onClose);
+  }
+  throw new Error('Helium is running without remote debugging. Turn it on at chrome://inspect/#remote-debugging, then run start again.');
 }
 
-/** Page JS for the open modal dialogs, last one on top. */
 const DIALOGS = `(() => {
   const visible = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
   const modal = (el) => el.tagName === 'DIALOG' || el.getAttribute('aria-modal') === 'true' || /modal/i.test(el.className);
   return [...document.querySelectorAll('[role=dialog], [role=alertdialog], dialog[open]')].filter((el) => visible(el) && modal(el));
 })()`;
 
-async function where(evaluate) {
-  return evaluate(`({ url: location.href, title: document.title, dialog: ${DIALOGS}.length > 0 })`);
-}
-
-function locked(profile) {
-  try {
-    closeSync(openSync(join(profile, 'Default/Network/Cookies'), 'r'));
-    return false;
-  } catch (error) {
-    return ['EACCES', 'EBUSY', 'EPERM'].includes(error.code);
-  }
-}
-
-function syncProfile() {
-  for (const name of ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'lockfile', 'DevToolsActivePort', 'Default/Sessions', 'Default/Sessions_Encrypted']) {
-    rmSync(join(PROFILE, name), { recursive: true, force: true });
-  }
-  if (locked(SOURCE)) {
-    if (existsSync(join(PROFILE, 'Local State'))) return false;
-    fail('Helium is open, so its profile cannot be copied yet. Ask the user to close Helium, then run start again.');
-  }
-  mkdirSync(join(PROFILE, 'Default'), { recursive: true });
-  writeFileSync(join(PROFILE, 'Local State'), readFileSync(join(SOURCE, 'Local State')));
-  const exclude = ['IndexedDB', 'Service Worker', '*Cache*', 'blob_storage', 'File System', 'Extensions', 'History*', 'Favicons*', 'LOCK', 'Sessions'];
-  const copy =
-    process.platform === 'win32'
-      ? spawnSync('robocopy', [join(SOURCE, 'Default'), join(PROFILE, 'Default'), '/MIR', '/NJH', '/NJS', '/NFL', '/NDL', '/NP', '/XD', ...exclude, '/XF', ...exclude], { encoding: 'utf8' })
-      : spawnSync('rsync', ['-a', '--delete', ...exclude.flatMap((e) => ['--exclude', e]), `${SOURCE}/Default/`, `${PROFILE}/Default/`], { encoding: 'utf8' });
-  const robocopyOk = process.platform === 'win32' && copy.status < 8;
-  if (copy.status !== 0 && !robocopyOk) fail(`Profile sync failed: ${copy.stderr || copy.stdout}`);
-  return true;
-}
-
-/** The user's Wayland socket. Agent shells often lack WAYLAND_DISPLAY, so fall back to the runtime dir. */
-function waylandDisplay() {
-  if (process.env.WAYLAND_DISPLAY) return process.env.WAYLAND_DISPLAY;
-  const runtime = process.env.XDG_RUNTIME_DIR ?? `/run/user/${process.getuid()}`;
-  const socket = existsSync(runtime) && readdirSync(runtime).find((name) => /^wayland-\d+$/.test(name));
-  if (!socket) fail('No Wayland display found for the visible browser.');
-  return socket;
-}
-
-/** Page JS: querySelectorAll that also searches open shadow roots. */
 const DEEP = `const deepAll = (root, selector) => {
   const found = [...root.querySelectorAll(selector)];
   for (const el of root.querySelectorAll('*')) if (el.shadowRoot) found.push(...deepAll(el.shadowRoot, selector));
@@ -216,7 +188,6 @@ const DEEP = `const deepAll = (root, selector) => {
 
 const element = (ref) => `(() => { ${DEEP} return deepAll(document, '[data-ja-ref="${Number(ref)}"]')[0] ?? null; })()`;
 
-/** Runs in the page: numbers visible form elements, including those in open shadow roots, and returns them with readable text. */
 const SNAPSHOT = (all) => `(() => {
   ${DEEP}
   const visible = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
@@ -224,7 +195,6 @@ const SNAPSHOT = (all) => `(() => {
   const root = ${all} || dialogs.length === 0 ? document.body : dialogs.at(-1);
   const clean = (s) => (s ?? '').replace(/\\s+/g, ' ').trim();
   const choice = (el) => el.type === 'radio' || el.type === 'checkbox';
-  // A styled radio or checkbox often hides its input, so judge it by its label.
   const shown = (el) => {
     const box = choice(el) ? (el.labels?.[0] ?? el.parentElement ?? el) : el;
     if (!visible(box) || box.closest('[inert]')) return false;
@@ -247,7 +217,6 @@ const SNAPSHOT = (all) => `(() => {
   deepAll(document, '[data-ja-ref]').forEach((el) => el.removeAttribute('data-ja-ref'));
   const selector = 'input, textarea, select, button, a[href], [role=button], [role=checkbox], [role=radio], [role=combobox], [role=option], [role=link], [role=switch], [contenteditable=true]';
   const elements = [];
-  // File inputs often sit outside the modal that uses them, so they are always included.
   const candidates = new Set([...deepAll(root, selector), ...deepAll(document, 'input[type=file]')]);
   for (const el of candidates) {
     const file = el.type === 'file';
@@ -286,214 +255,251 @@ const KEYS = {
   Backspace: { key: 'Backspace', code: 'Backspace', windowsVirtualKeyCode: 8 },
 };
 
-const commands = {
-  async start() {
-    const url = await endpoint();
-    if (url && (await connect(url).then((c) => (c.close(), true)).catch(() => false))) {
-      const running = existsSync(MODE_FILE) ? readFileSync(MODE_FILE, 'utf8').trim() : MODE;
-      if (running !== MODE) fail(`The ${running} browser is open on the same profile. Stop it first${running === 'visible' ? ', once the user is done with it' : ''}.`);
-      return out({ ok: true, running: true, mode: MODE });
+async function serve() {
+  const tabs = new Set();
+  const sessions = new Map();
+  let current = null;
+  let shuttingDown = false;
+  const exit = (reason) => {
+    console.error(`${new Date().toISOString()} exit: ${reason}`);
+    if (readJson(DAEMON_FILE)?.pid === process.pid) rmSync(DAEMON_FILE, { force: true });
+    process.exit(0);
+  };
+  const onEvent = ({ method, params }) => {
+    if (method === 'Target.targetCreated' && params.targetInfo.type === 'page' && tabs.has(params.targetInfo.openerId)) tabs.add(params.targetInfo.targetId);
+    if (method === 'Target.targetDestroyed') {
+      tabs.delete(params.targetId);
+      sessions.delete(params.targetId);
+      if (current === params.targetId) current = null;
     }
-    if (!existsSync(BROWSER)) fail(`No browser at ${BROWSER}. Set JOB_BROWSER.`);
-    if (!WINDOWS && MODE === 'hidden' && spawnSync('which', ['xvfb-run']).status !== 0) fail('xvfb-run not found. Install Xvfb.');
-    const synced = syncProfile();
-    writeFileSync(MODE_FILE, MODE);
-    const flags = [`--user-data-dir=${browserPath(PROFILE)}`, '--disable-blink-features=AutomationControlled', '--remote-debugging-port=0', '--window-size=1280,900', '--no-first-run', '--no-default-browser-check', 'about:blank'];
-    const launch = () => {
-      if (WINDOWS && MODE === 'visible') {
-        spawn(BROWSER, flags, { cwd: CWD, detached: true, stdio: 'ignore' }).unref();
-      } else if (WINDOWS) {
-        // A desktop nobody looks at counts as occluded, so keep Helium from pausing its rendering there.
-        const hidden = [...flags, '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
-        const commandLine = [browserPath(BROWSER), ...hidden].map((arg) => `"${arg}"`).join(' ');
-        const script = browserPath(join(dirname(fileURLToPath(import.meta.url)), 'hidden-desktop.ps1'));
-        const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, Buffer.from(commandLine).toString('base64')], { cwd: CWD, encoding: 'utf8' });
-        if (result.status !== 0) fail(`Hidden desktop launch failed: ${result.stderr.trim()}`);
-      } else {
-        // Without WAYLAND_DISPLAY and with ozone on x11, the hidden window opens on Xvfb, never on the user's screen.
-        const { WAYLAND_DISPLAY, ...env } = process.env;
-        const child = MODE === 'visible'
-          ? spawn(BROWSER, ['--ozone-platform=wayland', ...flags], { detached: true, stdio: 'ignore', env: { ...env, WAYLAND_DISPLAY: waylandDisplay() } })
-          : spawn('xvfb-run', ['-a', '-s', '-screen 0 1280x900x24', BROWSER, '--ozone-platform=x11', ...flags], { detached: true, stdio: 'ignore', env });
-        child.unref();
-      }
+  };
+
+  let send;
+  try {
+    send = await attach(onEvent, (event) => shuttingDown || exit(`Helium closed the DevTools connection (code ${event?.code})`));
+  } catch (error) {
+    writeFileSync(DAEMON_FILE, JSON.stringify({ error: error.message }));
+    process.exit(1);
+  }
+  await send('Target.setDiscoverTargets', { discover: true });
+  const windowOf = async (targetId) => (await send('Browser.getWindowForTarget', { targetId })).windowId;
+  const setWindow = async (targetId, windowState) => send('Browser.setWindowBounds', { windowId: await windowOf(targetId), bounds: { windowState } });
+
+  const page = async () => {
+    if (!current) throw new Error('No current tab. Run open <url>, or tabs then use <id>.');
+    let sessionId = sessions.get(current);
+    if (!sessionId) {
+      ({ sessionId } = await send('Target.attachToTarget', { targetId: current, flatten: true }));
+      sessions.set(current, sessionId);
+      await send('Emulation.setFocusEmulationEnabled', { enabled: true }, sessionId).catch(() => {});
+    }
+    const pageSend = (method, params) => send(method, params, sessionId);
+    const evaluate = async (expression) => {
+      const { result, exceptionDetails } = await pageSend('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+      if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
+      return result.value;
     };
-    // Windows Helium sometimes crashes during startup, so a launch that never opens its port gets one retry.
-    for (let attempt = 0; attempt < 2 && !activePort(); attempt++) {
-      launch();
-      for (let i = 0; i < 120 && !activePort(); i++) await sleep(250);
+    return { send: pageSend, evaluate };
+  };
+
+  const settle = async (evaluate) => {
+    for (let i = 0; i < 30; i++) {
+      if ((await evaluate('document.readyState').catch(() => null)) === 'complete') break;
+      await sleep(500);
     }
-    if (!activePort()) fail('Browser did not start.');
-    out({ ok: true, running: true, mode: MODE, synced, ...(!synced && { note: 'Helium is open, so this run uses the profile copy from its last start.' }) });
-  },
+    await sleep(800);
+  };
 
-  async stop() {
-    const url = await endpoint();
-    if (url) {
-      const cdp = await connect(url).catch(() => null);
-      await cdp?.send('Browser.close').catch(() => {});
-    }
-    rmSync(join(PROFILE, 'DevToolsActivePort'), { force: true });
-    rmSync(TAB_FILE, { force: true });
-    rmSync(MODE_FILE, { force: true });
-    out({ ok: true, running: false });
-  },
+  const where = (evaluate) => evaluate(`({ url: location.href, title: document.title, dialog: ${DIALOGS}.length > 0 })`);
 
-  async open(url) {
-    if (!url) fail('Usage: open <url>');
-    const cdp = await browser();
-    const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
-    writeFileSync(TAB_FILE, targetId);
-    const { send, evaluate } = await page();
-    await send('Page.navigate', { url });
-    await settle(evaluate);
-    out({ ok: true, tab: targetId, ...(await where(evaluate)) });
-  },
+  const commands = {
+    async ping() {
+      return {};
+    },
 
-  async goto(url) {
-    if (!url) fail('Usage: goto <url>');
-    const { send, evaluate } = await page();
-    await send('Page.navigate', { url });
-    await settle(evaluate);
-    out({ ok: true, ...(await where(evaluate)) });
-  },
+    async open(url) {
+      if (!url) throw new Error('Usage: open <url>');
+      const { targetId } = await send('Target.createTarget', { url: 'about:blank', newWindow: true, background: true });
+      tabs.add(targetId);
+      await setWindow(targetId, 'minimized');
+      current = targetId;
+      const { send: pageSend, evaluate } = await page();
+      await pageSend('Page.navigate', { url });
+      await settle(evaluate);
+      return { tab: targetId, ...(await where(evaluate)) };
+    },
 
-  async tabs() {
-    const cdp = await browser();
-    const { targetInfos } = await cdp.send('Target.getTargets');
-    const current = existsSync(TAB_FILE) ? readFileSync(TAB_FILE, 'utf8').trim() : null;
-    const tabs = targetInfos
-      .filter((t) => t.type === 'page')
-      .map((t) => ({ id: t.targetId, url: t.url, title: t.title, current: t.targetId === current }));
-    out({ ok: true, tabs });
-  },
+    async goto(url) {
+      if (!url) throw new Error('Usage: goto <url>');
+      const { send: pageSend, evaluate } = await page();
+      await pageSend('Page.navigate', { url });
+      await settle(evaluate);
+      return where(evaluate);
+    },
 
-  async use(id) {
-    if (!id) fail('Usage: use <id>');
-    writeFileSync(TAB_FILE, id);
-    const { evaluate } = await page();
-    out({ ok: true, tab: id, ...(await where(evaluate)) });
-  },
+    async tabs() {
+      const { targetInfos } = await send('Target.getTargets');
+      return { tabs: targetInfos.filter((t) => tabs.has(t.targetId)).map((t) => ({ id: t.targetId, url: t.url, title: t.title, current: t.targetId === current })) };
+    },
 
-  async snapshot(flag) {
-    const { evaluate } = await page();
-    out({ ok: true, ...(await evaluate(SNAPSHOT(flag === '--all'))) });
-  },
+    async use(id) {
+      if (!tabs.has(id)) throw new Error('No such job tab. Run tabs.');
+      current = id;
+      const { evaluate } = await page();
+      return { tab: id, ...(await where(evaluate)) };
+    },
 
-  async click(ref) {
-    const { send, evaluate } = await page();
-    const box = await evaluate(`(() => {
-      const el = ${element(ref)};
-      if (!el) return null;
-      el.scrollIntoView({ block: 'center', inline: 'center' });
-      const r = el.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    })()`);
-    if (!box) fail(`No element ${ref}. Take a new snapshot.`);
-    for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
-      await send('Input.dispatchMouseEvent', { type, x: box.x, y: box.y, button: 'left', clickCount: 1 });
-    }
-    await settle(evaluate);
-    out({ ok: true, ...(await where(evaluate)) });
-  },
+    async snapshot(flag) {
+      const { evaluate } = await page();
+      return evaluate(SNAPSHOT(flag === '--all'));
+    },
 
-  async fill(ref, ...words) {
-    const text = words.join(' ');
-    const { send, evaluate } = await page();
-    const found = await evaluate(`(() => {
-      const el = ${element(ref)};
-      if (!el) return false;
-      // Date-like inputs take no typed text, so set their value directly, such as 2027-07 for a month.
-      if (el.tagName === 'INPUT' && ['date', 'month', 'week', 'time', 'datetime-local', 'color', 'range'].includes(el.type)) {
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(text)});
+    async click(ref) {
+      const { send: pageSend, evaluate } = await page();
+      const box = await evaluate(`(() => {
+        const el = ${element(ref)};
+        if (!el) return null;
+        el.scrollIntoView({ block: 'center', inline: 'center' });
+        const r = el.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      })()`);
+      if (!box) throw new Error(`No element ${ref}. Take a new snapshot.`);
+      for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
+        await pageSend('Input.dispatchMouseEvent', { type, x: box.x, y: box.y, button: 'left', clickCount: 1 });
+      }
+      await settle(evaluate);
+      return where(evaluate);
+    },
+
+    async fill(ref, ...words) {
+      const text = words.join(' ');
+      const { send: pageSend, evaluate } = await page();
+      const found = await evaluate(`(() => {
+        const el = ${element(ref)};
+        if (!el) return false;
+        if (el.tagName === 'INPUT' && ['date', 'month', 'week', 'time', 'datetime-local', 'color', 'range'].includes(el.type)) {
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(text)});
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          return 'set';
+        }
+        el.scrollIntoView({ block: 'center' });
+        el.focus();
+        if (el.isContentEditable) document.execCommand('selectAll');
+        else el.select?.();
+        return true;
+      })()`);
+      if (!found) throw new Error(`No element ${ref}. Take a new snapshot.`);
+      if (found !== 'set') {
+        await pageSend('Input.dispatchKeyEvent', { type: 'keyDown', ...KEYS.Backspace });
+        await pageSend('Input.dispatchKeyEvent', { type: 'keyUp', ...KEYS.Backspace });
+        if (text) await pageSend('Input.insertText', { text });
+      }
+      await sleep(500);
+      return { ref: Number(ref), value: await evaluate(`(${element(ref)}?.value ?? ${element(ref)}?.innerText ?? '')`) };
+    },
+
+    async select(ref, ...words) {
+      const label = words.join(' ');
+      const { evaluate } = await page();
+      const result = await evaluate(`(() => {
+        const el = ${element(ref)};
+        if (!el || el.tagName !== 'SELECT') return { error: 'Not a native select. Click it and pick the option instead.' };
+        const option = [...el.options].find((o) => o.text.trim() === ${JSON.stringify(label)});
+        if (!option) return { error: 'No option labelled ' + ${JSON.stringify(label)} };
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, option.value);
         el.dispatchEvent(new Event('input', { bubbles: true }));
         el.dispatchEvent(new Event('change', { bubbles: true }));
-        return 'set';
-      }
-      el.scrollIntoView({ block: 'center' });
-      el.focus();
-      if (el.isContentEditable) document.execCommand('selectAll');
-      else el.select?.();
-      return true;
-    })()`);
-    if (!found) fail(`No element ${ref}. Take a new snapshot.`);
-    if (found !== 'set') {
-      await send('Input.dispatchKeyEvent', { type: 'keyDown', ...KEYS.Backspace });
-      await send('Input.dispatchKeyEvent', { type: 'keyUp', ...KEYS.Backspace });
-      if (text) await send('Input.insertText', { text });
-    }
-    await sleep(500);
-    const value = await evaluate(`(${element(ref)}?.value ?? ${element(ref)}?.innerText ?? '')`);
-    out({ ok: true, ref: Number(ref), value });
-  },
+        return { value: option.text.trim() };
+      })()`);
+      if (result.error) throw new Error(result.error);
+      return { ref: Number(ref), ...result };
+    },
 
-  async select(ref, ...words) {
-    const label = words.join(' ');
-    const { evaluate } = await page();
-    const result = await evaluate(`(() => {
-      const el = ${element(ref)};
-      if (!el || el.tagName !== 'SELECT') return { error: 'Not a native select. Click it and pick the option instead.' };
-      const option = [...el.options].find((o) => o.text.trim() === ${JSON.stringify(label)});
-      if (!option) return { error: 'No option labelled ' + ${JSON.stringify(label)} };
-      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, option.value);
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      return { value: option.text.trim() };
-    })()`);
-    if (result.error) fail(result.error);
-    out({ ok: true, ref: Number(ref), ...result });
-  },
+    async upload(ref, file) {
+      if (!file || !existsSync(file)) throw new Error(`No such file: ${file}`);
+      const { send: pageSend, evaluate } = await page();
+      const { result } = await pageSend('Runtime.evaluate', { expression: element(ref) });
+      if (!result.objectId) throw new Error(`No element ${ref}. Take a new snapshot.`);
+      await pageSend('DOM.setFileInputFiles', { files: [browserPath(file)], objectId: result.objectId });
+      await settle(evaluate);
+      return { ref: Number(ref), file };
+    },
 
-  async upload(ref, file) {
-    if (!file || !existsSync(file)) fail(`No such file: ${file}`);
-    const { send, evaluate } = await page();
-    const { result } = await send('Runtime.evaluate', { expression: element(ref) });
-    if (!result.objectId) fail(`No element ${ref}. Take a new snapshot.`);
-    await send('DOM.setFileInputFiles', { files: [browserPath(file)], objectId: result.objectId });
-    await settle(evaluate);
-    out({ ok: true, ref: Number(ref), file });
-  },
+    async press(name) {
+      const key = KEYS[name];
+      if (!key) throw new Error(`Unknown key. Use one of: ${Object.keys(KEYS).join(', ')}`);
+      const { send: pageSend, evaluate } = await page();
+      await pageSend('Input.dispatchKeyEvent', { type: 'keyDown', ...key });
+      await pageSend('Input.dispatchKeyEvent', { type: 'keyUp', ...key });
+      await settle(evaluate);
+      return where(evaluate);
+    },
 
-  async press(name) {
-    const key = KEYS[name];
-    if (!key) fail(`Unknown key. Use one of: ${Object.keys(KEYS).join(', ')}`);
-    const { send, evaluate } = await page();
-    await send('Input.dispatchKeyEvent', { type: 'keyDown', ...key });
-    await send('Input.dispatchKeyEvent', { type: 'keyUp', ...key });
-    await settle(evaluate);
-    out({ ok: true, ...(await where(evaluate)) });
-  },
+    async eval(...words) {
+      const { evaluate } = await page();
+      return { value: await evaluate(words.join(' ')) };
+    },
 
-  async eval(...words) {
-    const { evaluate } = await page();
-    out({ ok: true, value: await evaluate(words.join(' ')) });
-  },
+    async shot() {
+      const { send: pageSend } = await page();
+      const { data } = await pageSend('Page.captureScreenshot', { format: 'png' });
+      mkdirSync(SHOTS, { recursive: true });
+      const path = join(SHOTS, `${new Date().toISOString().replace(/[:.]/g, '-')}.png`);
+      writeFileSync(path, Buffer.from(data, 'base64'));
+      return { path };
+    },
 
-  async shot() {
-    const { send } = await page();
-    const { data } = await send('Page.captureScreenshot', { format: 'png' });
-    mkdirSync(SHOTS, { recursive: true });
-    const path = join(SHOTS, `${new Date().toISOString().replace(/[:.]/g, '-')}.png`);
-    writeFileSync(path, Buffer.from(data, 'base64'));
-    out({ ok: true, path });
-  },
+    async show() {
+      if (!current) throw new Error('No current tab. Run open <url>, or tabs then use <id>.');
+      await setWindow(current, 'normal');
+      await send('Target.activateTarget', { targetId: current });
+      return { window: 'normal' };
+    },
 
-  async close() {
-    const cdp = await browser();
-    if (existsSync(TAB_FILE)) {
-      await cdp.send('Target.closeTarget', { targetId: readFileSync(TAB_FILE, 'utf8').trim() }).catch(() => {});
-      rmSync(TAB_FILE, { force: true });
-    }
-    out({ ok: true });
-  },
-};
+    async hide() {
+      if (!current) throw new Error('No current tab. Run open <url>, or tabs then use <id>.');
+      await setWindow(current, 'minimized');
+      return { window: 'minimized' };
+    },
+
+    async close() {
+      if (!current) return {};
+      await send('Target.closeTarget', { targetId: current });
+      tabs.delete(current);
+      current = null;
+      return {};
+    },
+
+    async stop() {
+      shuttingDown = true;
+      for (const targetId of tabs) await send('Target.closeTarget', { targetId }).catch(() => {});
+      setTimeout(() => exit('stop'), 100);
+      return { attached: false };
+    },
+  };
+
+  let queue = Promise.resolve();
+  const server = createServer((socket) => {
+    let data = '';
+    socket.on('data', (chunk) => {
+      data += chunk;
+      if (!data.includes('\n')) return;
+      const { name, args } = JSON.parse(data);
+      queue = queue.then(async () => {
+        const command = commands[name];
+        const reply = command
+          ? await command(...args).then((result) => ({ ok: true, ...result }), (error) => ({ ok: false, error: error.message }))
+          : { ok: false, error: `Unknown command. Use one of: start, ${Object.keys(commands).filter((c) => c !== 'ping').join(', ')}` };
+        socket.end(JSON.stringify(reply));
+      });
+    });
+  });
+  server.listen(0, '127.0.0.1', () => writeFileSync(DAEMON_FILE, JSON.stringify({ port: server.address().port, pid: process.pid })));
+}
 
 const [name, ...args] = process.argv.slice(2);
-const command = commands[name];
-if (!command) fail(`Unknown command. Use one of: ${Object.keys(commands).join(', ')}`);
-try {
-  await command(...args);
-} catch (error) {
-  fail(error.message);
-}
-process.exit(0);
+if (name === 'serve') await serve();
+else if (name === 'start') await startCommand();
+else if (name) await clientCommand(name, args);
+else fail('Usage: browser.mjs <command>');

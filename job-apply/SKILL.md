@@ -1,6 +1,6 @@
 ---
 name: job-apply
-description: Find internships and entry-level jobs with is-dl and apply to them in a private browser that carries the user's logins, uploading a tailored resume, answering screening questions from the user's answer bank, and logging each submission in is-dl. Use when asked to apply to jobs, or when a scheduled application run fires.
+description: Find internships and entry-level jobs with is-dl and apply to them in the user's Helium, uploading a tailored resume, answering screening questions from the user's answer bank, and logging each submission in is-dl. Use when asked to apply to jobs, or when a scheduled application run fires.
 disable-model-invocation: true
 ---
 
@@ -12,11 +12,11 @@ This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL
 
 ## The browser
 
-`scripts/browser.mjs` in this skill's folder drives a private Helium in a window the user never sees: on a virtual X display on Linux, on a hidden Windows desktop on Windows and WSL. It is not headless, because captchas reject headless browsers. It runs on a copy of the user's main Helium profile, so it is signed in to LinkedIn, Google and the rest. It never touches the browser the user has open. Windows Helium locks its profile while open, so there `start` refreshes the copy only while Helium is closed. Every command prints one JSON line. The commands here are bash; on Windows, run them in Git Bash.
+`scripts/browser.mjs` in this skill's folder drives the user's own Helium over DevTools, so it carries their LinkedIn, Google and other logins in one cookie jar. It is a real, non-headless browser, because captchas reject headless ones. `start` attaches through one connection that a background process holds until `stop`; Helium asks the user to approve each new connection, so every later command reuses it. Each tab you `open` gets its own minimized window, and the commands act only on those tabs, never on the user's. Every command prints one JSON line. The commands here are bash; on Windows, run them in Git Bash.
 
 ```bash
 B=<this skill's folder>/scripts/browser.mjs
-node $B start                 # refresh the profile copy and launch; synced: false means Helium was open, so the last copy is used
+node $B start                 # attach to Helium, opening it if closed; waits up to 2 minutes for the user to approve the connection
 node $B open <url>            # new tab, becomes current
 node $B snapshot              # page text plus numbered visible elements, shadow DOM included; scoped to an open modal, --all for the whole page
 node $B click <ref>            # prints dialog: true when a modal is open after the click
@@ -28,11 +28,12 @@ node $B tabs                  # an external Apply often opens a new tab; switch 
 node $B goto <url>
 node $B eval '<js>'           # read what a snapshot misses, such as an iframe's src
 node $B shot                  # screenshot path, for showing the user
+node $B show                  # bring the current tab's window up for the user; hide minimizes it again
 node $B close
-node $B stop
+node $B stop                  # close every tab this run opened and detach; Helium stays open
 ```
 
-`JOB_BROWSER_VISIBLE=1 node $B start` opens the same profile copy in a window on the user's screen, for a captcha handoff. Only one of the two runs at a time, so `stop` the hidden one first. When `start` fails because the visible one is open, it is the user's: skip browser work this run and say so.
+When `start` fails, do no browser work this run and report its error, such as an unapproved connection or remote debugging turned off.
 
 Refs come from the latest snapshot. Take a new one after every click that changes the page. A typeahead field, such as a city, wants you to fill it, snapshot, and click a suggestion. When a form sits in an iframe, `eval` its `src` and `goto` it.
 
@@ -44,8 +45,7 @@ A new machine lacks the user's private files. Set up whatever is missing, then c
 
 - **`~/.config/is-dl/answers.md`.** Copy `references/answers-template.md` from this skill's folder there. Ask the user for every `<placeholder>` in one message, fill in their answers in their words, and leave "Learned answers" empty. Take anything the resume already states, such as degree and graduation, from `resume.yaml` and ask only to confirm it. Never put the file in a git repository; if `~/.config/is-dl` is a dotfiles-managed folder, check that the repo ignores `answers.md`.
 - **`$APPLICANT_PHONE`.** Ask the user for the number with country code. Add `export APPLICANT_PHONE=<number>` to `~/.secrets`, creating it if needed, and make sure every shell loads it: `. "$HOME/.secrets"` in `~/.zshenv`, and on Windows the PowerShell profile too. Never write the number anywhere else.
-- **Xvfb.** On Linux, `start` needs `xvfb-run`. On Fedora it comes with `xorg-x11-server-Xvfb`.
-- **Helium.** `start` needs Helium at `/opt/helium/helium` on Linux or under `%LOCALAPPDATA%\imput\Helium` on Windows and WSL. Set `JOB_BROWSER` when it lives elsewhere. The copy comes from Helium's main profile, on Linux in `~/.config/net.imput.helium`; set `JOB_BROWSER_SOURCE` when it lives elsewhere. The user signs in to LinkedIn, Gmail, Wellfound and workatastartup.com in their own Helium. On Windows and WSL the first `start` fails while Helium is open, so ask the user to close it once.
+- **Helium.** `start` needs Helium at `/opt/helium/helium` on Linux or under `%LOCALAPPDATA%\imput\Helium` on Windows and WSL, with remote debugging on at `chrome://inspect/#remote-debugging`. Set `JOB_BROWSER` when Helium lives elsewhere and `JOB_BROWSER_DATA` when its user data folder does. The user signs in to LinkedIn, Gmail, Wellfound and workatastartup.com in Helium.
 - **is-dl.** `is-dl doctor` covers it. A missing resume (`~/.config/is-dl/resume/resume.yaml`) is the user's to supply; stop and say so.
 
 ## Usage gate
@@ -127,7 +127,7 @@ Fewer good listings than the limit is fine. Never pad.
 
 Once every LinkedIn search has finished, extra roles included:
 
-1. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". Then `close`. If it is signed out, do no LinkedIn work this run and tell the user to sign in to LinkedIn in Helium. Never ask for credentials. When `start` printed `synced: false`, a sign-in the user made since the last copy is missing too; say so, and that closing Helium before the next run picks it up.
+1. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". Then `close`. If it is signed out, do no LinkedIn work this run and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
 2. Read `~/.local/state/job-apply/pending.json` if it exists, and check every entry, whatever its status, for a closed listing: the listing or its apply page says it is closed or no longer accepting applications, or is gone. A Y Combinator job has closed when its `id` is missing from the company's `jobPostings` (see Apply step 2). When LinkedIn has a repost by the same company with the same role, put the repost's `jobId` and `url` in the entry and keep it. Otherwise remove the entry as Log describes for a rejected job, without asking the user.
 3. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
 
@@ -151,7 +151,7 @@ For each kept listing, one at a time:
 7. Log it, as described below.
 8. `close` the tab. On a scheduled run, run the usage gate before the next listing.
 
-`node $B stop` when the run ends. Leave a visible browser alone; it is the user's until they say they are done.
+`node $B stop` when the run ends, unless a captcha handoff is waiting on the user.
 
 ### Scripts
 
@@ -178,7 +178,7 @@ Record it in `pending.json` with the exact question and a link. At the end of th
 
 #### Captcha handoff
 
-When the user asks for a stopped captcha job, open it for them in the visible browser: run `start`, `open`, and every fill with `JOB_BROWSER_VISIBLE=1`, using the values recorded in its entry. Leave the tab on the last page with the captcha unsolved and nothing submitted, and tell the user it is ready. They solve the captcha and submit. When they say it is done, `snapshot` that tab, confirm the page says the application was sent, log it as below, then `stop` the visible browser. If they close the window without submitting, the job stays stopped.
+When the user asks for a stopped captcha job, `open` it and redo every fill from the values recorded in its entry. Leave the tab on the last page with the captcha unsolved and nothing submitted, run `show`, and tell the user it is ready. They solve the captcha and submit. When they say it is done, `snapshot` that tab, confirm the page says the application was sent, log it as below, then `stop`. If they close the window without submitting, the job stays stopped.
 
 When the user answers, add each reusable fact under "Learned answers" in `answers.md` in their words, so the same question never reaches them twice. A cover letter is not a reusable fact.
 
