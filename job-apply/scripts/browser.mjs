@@ -131,12 +131,36 @@ async function endpoint(active) {
   return `ws://127.0.0.1:${server.address().port}${active.path}`;
 }
 
+const APPROVAL_TITLE = 'Helium needs your approval';
+const APPROVAL_TEXT = 'Allow the remote debugging connection so the job-apply run can continue.';
+
+function promptForApproval() {
+  if (!WINDOWS) {
+    spawn('notify-send', ['--urgency=critical', APPROVAL_TITLE, APPROVAL_TEXT], { stdio: 'ignore' }).on('error', () => {});
+    return;
+  }
+  const script = `$browser = '${browserPath(BROWSER).replaceAll("'", "''")}'
+$window = Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $browser -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+if ($window) { $null = (New-Object -ComObject WScript.Shell).AppActivate($window.Id) }
+$null = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
+$toast = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
+$lines = $toast.GetElementsByTagName('text')
+$null = $lines.Item(0).AppendChild($toast.CreateTextNode('${APPROVAL_TITLE}'))
+$null = $lines.Item(1).AppendChild($toast.CreateTextNode('${APPROVAL_TEXT}'))
+$notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe')
+$notifier.Show([Windows.UI.Notifications.ToastNotification]::new($toast))`;
+  const encoded = Buffer.from(script, 'utf16le').toString('base64');
+  spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], { cwd: CWD, stdio: 'ignore' }).on('error', () => {});
+}
+
 async function connect(url, onEvent, onClose) {
   const ws = new WebSocket(url);
   await new Promise((resolve, reject) => {
+    const awaitingApproval = setTimeout(promptForApproval, 3000);
     const timer = setTimeout(() => reject(new Error('timeout')), ATTACH_TIMEOUT_MS);
-    ws.onopen = () => (clearTimeout(timer), resolve());
-    ws.onerror = () => (clearTimeout(timer), reject(new Error('refused')));
+    const settle = () => (clearTimeout(awaitingApproval), clearTimeout(timer));
+    ws.onopen = () => (settle(), resolve());
+    ws.onerror = () => (settle(), reject(new Error('refused')));
   });
   let id = 0;
   const pending = new Map();

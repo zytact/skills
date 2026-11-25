@@ -16,7 +16,7 @@ This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL
 
 ```bash
 B=<this skill's folder>/scripts/browser.mjs
-node $B start                 # attach to Helium, opening it if closed; waits up to 2 minutes for the user to approve the connection
+node $B start                 # attach to Helium, opening it if closed; waits up to 2 minutes for the user to approve the connection, and after 3 seconds shows a desktop notification and raises Helium
 node $B open <url>            # new tab, becomes current
 node $B snapshot              # page text plus numbered visible elements, shadow DOM included; scoped to an open modal, --all for the whole page
 node $B click <ref>            # prints dialog: true when a modal is open after the click
