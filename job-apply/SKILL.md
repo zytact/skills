@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Job apply
 
-One run finds fresh listings with is-dl, applies to up to 5 of them, and logs each one. The user is only needed to approve drafts and when a form asks for something you cannot answer from what you have.
+One run finds fresh listings with is-dl, applies to up to 10 of them, and logs each one. The user is only needed to approve drafts and when a form asks for something you cannot answer from what you have.
 
 This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL.md`) before the first command. Its rules hold here, above all that a resume only selects bullets and never gains a sentence. One rule is overridden: is-dl says a human presses send. Here you submit and log, except in a trial.
 
@@ -63,7 +63,7 @@ If the read fails, the gate passes and the report notes the failure.
 When the gate trips:
 
 1. `node $B stop` if the browser is running.
-2. Create one `schedule_task` titled `Job apply continuation`, bound to this thread: `fixed_time` at the reset time of the window that tripped plus 5 minutes, with `weekdays` set to that time's local weekday, not today's. Its prompt tells the run to find the task by title with `list_scheduled_tasks` and delete it, then run `/job-apply` (fallback: this skill file's path) as a scheduled, non-trial continuation that applies to at most `<n>` jobs, where `<n>` is what remains of the original run's 5.
+2. Create one `schedule_task` titled `Job apply continuation`, bound to this thread: `fixed_time` at the reset time of the window that tripped plus 5 minutes, with `weekdays` set to that time's local weekday, not today's. Its prompt tells the run to find the task by title with `list_scheduled_tasks` and delete it, then run `/job-apply` (fallback: this skill file's path) as a scheduled, non-trial continuation that applies to at most `<n>` jobs, where `<n>` is what remains of the original run's 10.
 3. End with the report.
 
 A run the user starts by hand, and every trial, does not defer. Over either threshold, it reports both windows and asks whether to go ahead.
@@ -130,7 +130,7 @@ Once every LinkedIn search has finished, extra roles included:
 
 1. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". Then `close`. If it is signed out, do no LinkedIn work this run and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
 2. Read `~/.local/state/job-apply/pending.json` if it exists, and check every entry, whatever its status, for a closed listing: the listing or its apply page says it is closed or no longer accepting applications, or is gone. A Y Combinator job has closed when its `id` is missing from the company's `jobPostings` (see Apply step 2). When LinkedIn has a repost by the same company with the same role, put the repost's `jobId` and `url` in the entry and keep it. Otherwise remove the entry as Log describes for a rejected job, without asking the user.
-3. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 5. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
+3. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 10. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
 
 ## Apply
 
@@ -185,7 +185,7 @@ When the user answers, add each reusable fact under "Learned answers" in `answer
 
 ### Drafts
 
-The user approves three kinds of text before it goes out: every Y Combinator founder message, every email application, and any form answer longer than about 3 sentences. Draft it, do not send it, and record the job in `pending.json` as `drafted` with the `message`, plus the form's `question` for a form answer, or `to` and `subject` for an email. It counts toward the run's 5.
+The user approves three kinds of text before it goes out: every Y Combinator founder message, every email application, and any form answer longer than about 3 sentences. Draft it, do not send it, and record the job in `pending.json` as `drafted` with the `message`, plus the form's `question` for a form answer, or `to` and `subject` for an email. It counts toward the run's 10.
 
 A Y Combinator application is the founder message alone; the founder sees the resume on the user's Work at a Startup profile. So skip the variant build and the upload for these jobs. Close the dialog without sending. For a form answer, fill the rest of the form but do not submit it.
 
@@ -214,7 +214,7 @@ When the user replies to a report about its drafts, act on the reply right away 
 
 `~/.local/state/job-apply/pending.json` is a JSON array, one entry per job not yet logged: `jobId`, `source`, `url`, `company`, `role`, `variant`, `pdf`, `status` (`queued`, `stopped`, `drafted` or `interrupted`), `question` when stopped or drafted for a form answer, `message` when drafted, `to` and `subject` for an email draft, and `sent` when interrupted: the site and every field you submitted. Keep it current as you go. Remove an entry once its job is logged, or once you reject it; rejected jobs go in the report, not the file. When you reject a job that already has a variant, delete its block from `variants.yaml` and its build folder (the parent of `pdf`), unless `is-dl apps list --json` shows a logged application with that `variant`. A stopped job keeps its variant.
 
-An interrupted job may have gone through, so no run submits it again, and it does not count toward a run's 5. It stays in the file until the user says what happened. If it went through, log it as below from its `sent` and remove the entry. If it did not, set it back to `queued`.
+An interrupted job may have gone through, so no run submits it again, and it does not count toward a run's 10. It stays in the file until the user says what happened. If it went through, log it as below from its `sent` and remove the entry. If it did not, set it back to `queued`.
 
 Run these commands right after the confirmation page. For a Y Combinator or Wellfound job, add `--source ycombinator` or `--source wellfound` to each:
 
@@ -251,7 +251,7 @@ End every run with:
 - A new drafted job: company, role, the question for a form answer or the recipient and subject for an email, and the draft word for word. Ask the user to approve or change it. Above the draft, so the user can judge the company, put 2 or 3 sentences on what it does, with its stage, funding or size when stated, and links to the job, the company's website and its LinkedIn page. For a Y Combinator company, fetch `https://www.ycombinator.com/companies/<slug>` with `curl`; its `data-page` JSON has `one_liner`, `website` and `linkedin_url`. For a LinkedIn job, use the company link on the listing and the website its page states.
 - A new interrupted job: link and what was sent. Ask whether it went through.
 - Listings you rejected, with one line each on why, and each pending entry removed or moved to a repost because its listing closed.
-- How many of the run's 5 you applied to.
+- How many of the run's 10 you applied to.
 - Each script you added to or changed in `~/.local/share/job-apply/scripts/`.
 - When the usage gate deferred the run: the utilization, the reset time, and when the continuation fires.
 - A link to the feedback file and how many notes this run added.
