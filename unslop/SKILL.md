@@ -1,6 +1,6 @@
 ---
 name: unslop
-description: Use only when "unslop" is mentioned.
+description: Use only when "unslop" is in the prompt.
 ---
 
 # Unslop
