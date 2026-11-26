@@ -83,7 +83,7 @@ Use this baseline against the diff:
 
 ### 4. Spawn the finder
 
-Spawn the finder as a T3 Code `delegate_task` child, a new task for each run: Gemini 4 Neon with `thought_level` `high`, through the Antigravity provider. Find the provider instance with `orchestrator_capabilities`. If Neon is unavailable, stop and tell the caller. Do not switch models. Outside T3 Code, run the finder as your own sub-agent and say so.
+Spawn the finder as a T3 Code `delegate_task` child, a new task for each run: Gemini 4 Neon with `thought_level` `high`, through the Antigravity provider. Find the provider instance with `orchestrator_capabilities`. If Neon is unavailable, use Claude Opus with effort `high` through the Claude provider instead, and tell the caller. If neither is available, stop and tell the caller. Outside T3 Code, run the finder as your own sub-agent and say so.
 
 Give the finder these inputs:
 
