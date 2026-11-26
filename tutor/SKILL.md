@@ -1,7 +1,6 @@
 ---
-name: teach
-description: Teach the user a new skill or concept, in a dedicated Obsidian vault.
-disable-model-invocation: true
+name: tutor
+description: Use only when "tutor" is mentioned in prompt.
 argument-hint: "What would you like to learn about?"
 ---
 
