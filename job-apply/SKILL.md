@@ -108,7 +108,7 @@ Once every LinkedIn search has finished, extra roles included:
 2. Read `~/.local/state/job-apply/pending.json` if it exists. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 10. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
 3. After the run's last application, check every other entry in `pending.json` for a closed listing, as Closed listings describes. Pause about 20 seconds between LinkedIn pages.
 
-LinkedIn signs Helium out when it opens many LinkedIn pages in a row, so open one only when a step needs it. If it signs out mid-run, a submit fails with "We couldn't submit your application" or a page shows a sign-in form. Then stop all LinkedIn work, including jobs whose Apply goes to the company's website, since those links work only while signed in. Leave the untouched jobs `queued`, and tell the user to sign in to LinkedIn in Helium.
+LinkedIn signs Helium out when it opens many LinkedIn pages in a row, so open one only when a step needs it. If it signs out mid-run, a submit fails with "We couldn't submit your application" or a page shows a sign-in form. Then skip every remaining LinkedIn job, including those whose Apply goes to the company's website, since those links work only while signed in, and leave them `queued`. Keep going with the jobs that need no LinkedIn page, such as Y Combinator, Wellfound and email jobs, and finish the run. The report tells the user to sign in to LinkedIn in Helium.
 
 ### Closed listings
 
