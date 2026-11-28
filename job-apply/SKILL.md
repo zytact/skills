@@ -12,31 +12,7 @@ This skill builds on `is-dl`. Read its skill file (`~/.agents/skills/is-dl/SKILL
 
 ## The browser
 
-`scripts/browser.mjs` in this skill's folder drives the user's own Helium over DevTools, so it carries their LinkedIn, Google and other logins in one cookie jar. It is a real, non-headless browser, because captchas reject headless ones. `start` attaches through one connection that a background process holds until `stop`; Helium asks the user to approve each new connection, so every later command reuses it. Each tab you `open` gets its own minimized window, and the commands act only on those tabs, never on the user's. Every command prints one JSON line. The commands here are bash; on Windows, run them in Git Bash.
-
-```bash
-B=<this skill's folder>/scripts/browser.mjs
-node $B start                 # attach to Helium, opening it if closed; waits up to 2 minutes for the user to approve the connection, and after 3 seconds shows a desktop notification and raises Helium
-node $B open <url>            # new tab, becomes current
-node $B snapshot              # page text plus numbered visible elements, shadow DOM included; scoped to an open modal, --all for the whole page
-node $B click <ref>            # prints dialog: true when a modal is open after the click
-node $B fill <ref> <text>     # replaces the field's text, prints the value it now holds; a month input takes 2027-07
-node $B select <ref> <label>  # native <select> only; for custom dropdowns click, snapshot, click the option
-node $B upload <ref> <file>   # file inputs show in snapshots even when hidden
-node $B press Enter           # also Tab, Escape, ArrowDown, ArrowUp, Backspace
-node $B tabs                  # an external Apply often opens a new tab; switch with: node $B use <id>
-node $B goto <url>
-node $B eval '<js>'           # read what a snapshot misses, such as an iframe's src
-node $B dialog accept         # or dismiss; answers a page's alert, confirm or prompt, which fails every other command with its text until answered
-node $B shot                  # screenshot path, for showing the user
-node $B show                  # bring the current tab's window up for the user; hide minimizes it again
-node $B close
-node $B stop                  # close every tab this run opened and detach; Helium stays open
-```
-
-When `start` fails, do no browser work this run and report its error, such as an unapproved connection or remote debugging turned off.
-
-Refs come from the latest snapshot. Take a new one after every click that changes the page. A typeahead field, such as a city, wants you to fill it, snapshot, and click a suggestion. Snapshots reach into same-origin iframes. When a form sits in a cross-origin iframe, `eval` its `src` and `goto` it.
+Applications go through the user's own Helium, driven by the `helium` skill, which carries their LinkedIn, Google and other logins. Read its skill file (`~/.agents/skills/helium/SKILL.md`) before the first browser command. Below, `$H` is its `scripts/helium.mjs`.
 
 A LinkedIn listing loads its description late. Wait about 6 seconds after `open`, click "… more" if the description shows one, then snapshot with `--all`.
 
@@ -46,7 +22,7 @@ A new machine lacks the user's private files. Set up whatever is missing, then c
 
 - **`~/.config/is-dl/answers.md`.** Copy `references/answers-template.md` from this skill's folder there. Ask the user for every `<placeholder>` in one message, fill in their answers in their words, and leave "Learned answers" empty. Take anything the resume already states, such as degree and graduation, from `resume.yaml` and ask only to confirm it. Never put the file in a git repository; if `~/.config/is-dl` is a dotfiles-managed folder, check that the repo ignores `answers.md`.
 - **`$APPLICANT_PHONE`.** Ask the user for the number with country code. Add `export APPLICANT_PHONE=<number>` to `~/.secrets`, creating it if needed, and make sure every shell loads it: `. "$HOME/.secrets"` in `~/.zshenv`, and on Windows the PowerShell profile too. Never write the number anywhere else.
-- **Helium.** `start` needs Helium at `/opt/helium/helium` on Linux or under `%LOCALAPPDATA%\imput\Helium` on Windows and WSL, with remote debugging on at `chrome://inspect/#remote-debugging`. Set `JOB_BROWSER` when Helium lives elsewhere and `JOB_BROWSER_DATA` when its user data folder does. The user signs in to LinkedIn, Gmail, Wellfound and workatastartup.com in Helium.
+- **Helium.** Set it up as the `helium` skill's Setup says. The user signs in to LinkedIn, Gmail, Wellfound and workatastartup.com in Helium.
 - **is-dl.** `is-dl doctor` covers it. A missing resume (`~/.config/is-dl/resume/resume.yaml`) is the user's to supply; stop and say so.
 
 ## Usage gate
@@ -62,7 +38,7 @@ If the read fails, the gate passes and the report notes the failure.
 
 When the gate trips:
 
-1. `node $B stop` if the browser is running.
+1. `node $H stop` if the browser is running.
 2. Create one `schedule_task` titled `Job apply continuation`, bound to this thread: `fixed_time` at the reset time of the window that tripped plus 5 minutes, with `weekdays` set to that time's local weekday, not today's. Its prompt tells the run to find the task by title with `list_scheduled_tasks` and delete it, then run `/job-apply` (fallback: this skill file's path) as a scheduled, non-trial continuation that applies to at most `<n>` jobs, where `<n>` is what remains of the original run's 10.
 3. End with the report.
 
@@ -128,7 +104,7 @@ Fewer good listings than the limit is fine. Never pad.
 
 Once every LinkedIn search has finished, extra roles included:
 
-1. `node $B start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". Then `close`. If it is signed out, do no LinkedIn work this run and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
+1. `node $H start`, then `open https://www.linkedin.com/feed/` and `snapshot`. The page must show the feed, not "Sign in" or "Join now". Then `close`. If it is signed out, do no LinkedIn work this run and tell the user to sign in to LinkedIn in Helium. Never ask for credentials.
 2. Read `~/.local/state/job-apply/pending.json` if it exists, and check every entry, whatever its status, for a closed listing: the listing or its apply page says it is closed or no longer accepting applications, or is gone. A Y Combinator job has closed when its `id` is missing from the company's `jobPostings` (see Apply step 2). When LinkedIn has a repost by the same company with the same role, put the repost's `jobId` and `url` in the entry and keep it. Otherwise remove the entry as Log describes for a rejected job, without asking the user.
 3. Apply first to the `queued` jobs and to `stopped` jobs the user has since answered. They count toward the run's 10. A `drafted` job waits for the user; see Drafts. Never resubmit an `interrupted` job; see Log.
 
@@ -152,7 +128,7 @@ For each kept listing, one at a time:
 7. Log it, as described below.
 8. `close` the tab. On a scheduled run, run the usage gate before the next listing.
 
-`node $B stop` when the run ends, unless a captcha handoff is waiting on the user.
+`node $H stop` when the run ends, unless a captcha handoff is waiting on the user.
 
 ### Scripts
 
@@ -258,4 +234,4 @@ End every run with:
 
 ## Feedback
 
-Whenever this skill or `browser.mjs` is unclear, wrong or missing something, append a note to `~/.local/state/job-apply/feedback.md`: one line under a heading with the run's date, naming the job or command it came from. Skip a note the file already has in substance. Agents that fix the skill work through this file and remove each note they resolve.
+Whenever this skill or `helium.mjs` is unclear, wrong or missing something, append a note to `~/.local/state/job-apply/feedback.md`: one line under a heading with the run's date, naming the job or command it came from. Skip a note the file already has in substance. Agents that fix the skill work through this file and remove each note they resolve.

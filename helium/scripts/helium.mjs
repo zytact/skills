@@ -13,9 +13,9 @@ const run = (command, ...args) => spawnSync(command, args, { cwd: CWD, encoding:
 const browserPath = (path) => (WSL ? run('wslpath', '-w', path) : path);
 const LOCAL_APP_DATA = WSL ? run('wslpath', run('cmd.exe', '/d', '/c', 'echo %LOCALAPPDATA%')) : process.env.LOCALAPPDATA;
 
-const BROWSER = process.env.JOB_BROWSER ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/Application/chrome.exe') : '/opt/helium/helium');
-const USER_DATA = process.env.JOB_BROWSER_DATA ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/User Data') : join(homedir(), '.config/net.imput.helium'));
-const STATE = join(homedir(), '.local/state/job-apply');
+const BROWSER = process.env.HELIUM_BROWSER ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/Application/chrome.exe') : '/opt/helium/helium');
+const USER_DATA = process.env.HELIUM_USER_DATA ?? (WINDOWS ? join(LOCAL_APP_DATA, 'imput/Helium/User Data') : join(homedir(), '.config/net.imput.helium'));
+const STATE = join(homedir(), '.local/state/helium');
 const DAEMON_FILE = join(STATE, 'browser.json');
 const DAEMON_LOG = join(STATE, 'browser.log');
 const SHOTS = join(STATE, 'shots');
@@ -132,7 +132,7 @@ async function endpoint(active) {
 }
 
 const APPROVAL_TITLE = 'Helium needs your approval';
-const APPROVAL_TEXT = 'Allow the remote debugging connection so the job-apply run can continue.';
+const APPROVAL_TEXT = 'Allow the remote debugging connection so the agent can continue.';
 
 function promptForApproval() {
   if (!WINDOWS) {
@@ -203,7 +203,7 @@ async function attach(onEvent, onClose) {
     if (!(send instanceof Error)) return send;
     if (send.message === 'timeout') throw new Error('Helium did not accept the DevTools connection. Approve the remote debugging prompt in Helium, then run start again.');
   }
-  if (!existsSync(BROWSER)) throw new Error(`Helium is not running and there is no browser at ${BROWSER}. Set JOB_BROWSER.`);
+  if (!existsSync(BROWSER)) throw new Error(`Helium is not running and there is no browser at ${BROWSER}. Set HELIUM_BROWSER.`);
   spawn(BROWSER, [], { cwd: CWD, detached: true, stdio: 'ignore' }).unref();
   const launched = Date.now();
   for (let i = 0; i < 120; i++) {
@@ -244,7 +244,7 @@ const pageBox = (el) => {
   return { x, y };
 };`;
 
-const element = (ref) => `(() => { ${DEEP} return deepAll(document, '[data-ja-ref="${Number(ref)}"]')[0] ?? null; })()`;
+const element = (ref) => `(() => { ${DEEP} return deepAll(document, '[data-helium-ref="${Number(ref)}"]')[0] ?? null; })()`;
 
 const SNAPSHOT = (all) => `(() => {
   ${DEEP}
@@ -272,7 +272,7 @@ const SNAPSHOT = (all) => `(() => {
     (el.getAttribute('aria-labelledby') ?? '').split(' ').map((id) => (el.getRootNode().getElementById?.(id) ?? document.getElementById(id))?.innerText ?? '').join(' ') ||
     el.placeholder || el.innerText || el.value || el.name || el.title
   ).slice(0, 160);
-  deepAll(document, '[data-ja-ref]').forEach((el) => el.removeAttribute('data-ja-ref'));
+  deepAll(document, '[data-helium-ref]').forEach((el) => el.removeAttribute('data-helium-ref'));
   const selector = 'input, textarea, select, button, a[href], [role=button], [role=checkbox], [role=radio], [role=combobox], [role=option], [role=link], [role=switch], [contenteditable=true]';
   const elements = [];
   const candidates = new Set([...deepAll(root, selector), ...deepAll(document, 'input[type=file]')]);
@@ -280,7 +280,7 @@ const SNAPSHOT = (all) => `(() => {
     const file = el.type === 'file';
     if (el.type === 'hidden' || (!file && !shown(el))) continue;
     const ref = elements.length + 1;
-    el.setAttribute('data-ja-ref', ref);
+    el.setAttribute('data-helium-ref', ref);
     const item = { ref, tag: el.tagName.toLowerCase(), label: labelOf(el) };
     const role = el.getAttribute('role');
     if (role) item.role = role;
@@ -410,7 +410,7 @@ async function serve() {
     },
 
     async use(id) {
-      if (!tabs.has(id)) throw new Error('No such job tab. Run tabs.');
+      if (!tabs.has(id)) throw new Error('No such tab. Run tabs.');
       current = id;
       const { evaluate } = await page();
       return { tab: id, ...(await where(evaluate)) };
@@ -425,7 +425,7 @@ async function serve() {
       const { send: pageSend, evaluate } = await page();
       const box = await evaluate(`(() => {
         ${DEEP}
-        const el = deepAll(document, '[data-ja-ref="${Number(ref)}"]')[0];
+        const el = deepAll(document, '[data-helium-ref="${Number(ref)}"]')[0];
         if (!el) return null;
         el.scrollIntoView({ block: 'center', inline: 'center' });
         return pageBox(el);
@@ -579,4 +579,4 @@ const [name, ...args] = process.argv.slice(2);
 if (name === 'serve') await serve();
 else if (name === 'start') await startCommand();
 else if (name) await clientCommand(name, args);
-else fail('Usage: browser.mjs <command>');
+else fail('Usage: helium.mjs <command>');

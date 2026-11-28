@@ -1,0 +1,5 @@
+interface:
+  display_name: "Helium"
+  short_description: "Drive the user's own Helium browser with their logins"
+policy:
+  allow_implicit_invocation: true
